@@ -1,0 +1,4 @@
+SOURCES/openssh-8.7p1.tar.gz
+SOURCES/openssh-8.7p1.tar.gz.asc
+SOURCES/pam_ssh_agent_auth-0.10.4.tar.gz
+SOURCES/sshd-keygen.target

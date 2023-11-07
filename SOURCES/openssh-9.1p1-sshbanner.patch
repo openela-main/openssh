@@ -1,0 +1,57 @@
+diff --git a/ssh-keyscan.c b/ssh-keyscan.c
+index d29a03b4..d7283136 100644
+--- a/ssh-keyscan.c
++++ b/ssh-keyscan.c
+@@ -490,6 +490,15 @@ congreet(int s)
+ 		return;
+ 	}
+ 
++	/*
++	 * Read the server banner as per RFC4253 section 4.2.  The "SSH-"
++	 * protocol identification string may be preceeded by an arbitarily
++	 * large banner which we must read and ignore.  Loop while reading
++	 * newline-terminated lines until we have one starting with "SSH-".
++	 * The ID string cannot be longer than 255 characters although the
++	 * preceeding banner lines may (in which case they'll be discarded
++	 * in multiple iterations of the outer loop).
++	 */
+ 	for (;;) {
+ 		memset(buf, '\0', sizeof(buf));
+ 		bufsiz = sizeof(buf);
+@@ -517,6 +526,11 @@ congreet(int s)
+ 		conrecycle(s);
+ 		return;
+ 	}
++	if (cp >= buf + sizeof(buf)) {
++		error("%s: greeting exceeds allowable length", c->c_name);
++		confree(s);
++		return;
++	}
+ 	if (*cp != '\n' && *cp != '\r') {
+ 		error("%s: bad greeting", c->c_name);
+ 		confree(s);
+diff --git a/sshsig.c b/sshsig.c
+index 1e3b6398..eb2a931e 100644
+--- a/sshsig.c
++++ b/sshsig.c
+@@ -491,7 +491,7 @@ hash_file(int fd, const char *hashalg, struct sshbuf **bp)
+ {
+ 	char *hex, rbuf[8192], hash[SSH_DIGEST_MAX_LENGTH];
+ 	ssize_t n, total = 0;
+-	struct ssh_digest_ctx *ctx;
++	struct ssh_digest_ctx *ctx = NULL;
+ 	int alg, oerrno, r = SSH_ERR_INTERNAL_ERROR;
+ 	struct sshbuf *b = NULL;
+ 
+@@ -549,9 +548,11 @@ hash_file(int fd, const char *hashalg, struct sshbuf **bp)
+ 	/* success */
+ 	r = 0;
+  out:
++	oerrno = errno;
+ 	sshbuf_free(b);
+ 	ssh_digest_free(ctx);
+ 	explicit_bzero(hash, sizeof(hash));
++	errno = oerrno;
+ 	return r;
+ }
+ 

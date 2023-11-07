@@ -1,0 +1,131 @@
+diff --color -ru -x regress -x autom4te.cache -x '*.o' -x '*.lo' -x Makefile -x config.status -x configure~ -x configure.ac openssh-8.7p1/ssh-ecdsa.c openssh-8.7p1-patched/ssh-ecdsa.c
+--- openssh-8.7p1/ssh-ecdsa.c	2023-05-24 09:39:45.002631174 +0200
++++ openssh-8.7p1-patched/ssh-ecdsa.c	2023-05-24 09:09:34.400853951 +0200
+@@ -74,8 +74,18 @@
+ 	if ((hash_alg = sshkey_ec_nid_to_hash_alg(key->ecdsa_nid)) == -1)
+ 		return SSH_ERR_INTERNAL_ERROR;
+ 
+-  	if ((ret = ssh_create_evp_ec(key->ecdsa, key->ecdsa_nid, &pkey)) != 0)
+-		return ret;
++#ifdef ENABLE_PKCS11
++	if (is_ecdsa_pkcs11(key->ecdsa)) {
++		if ((pkey = EVP_PKEY_new()) == NULL ||
++		    EVP_PKEY_set1_EC_KEY(pkey, key->ecdsa) != 1)
++			return SSH_ERR_ALLOC_FAIL;
++	} else {
++#endif
++		if ((ret = ssh_create_evp_ec(key->ecdsa, key->ecdsa_nid, &pkey)) != 0)
++			return ret;
++#ifdef ENABLE_PKCS11
++	}
++#endif
+ 	ret = sshkey_calculate_signature(pkey, hash_alg, &sigb, &len, data,
+ 	    datalen);
+ 	EVP_PKEY_free(pkey);
+diff --color -ru -x regress -x autom4te.cache -x '*.o' -x '*.lo' -x Makefile -x config.status -x configure~ -x configure.ac openssh-8.7p1/ssh-pkcs11.c openssh-8.7p1-patched/ssh-pkcs11.c
+--- openssh-8.7p1/ssh-pkcs11.c	2023-05-24 09:39:44.950630607 +0200
++++ openssh-8.7p1-patched/ssh-pkcs11.c	2023-05-24 09:33:59.153866357 +0200
+@@ -775,8 +775,24 @@
+ 
+ 	return (0);
+ }
++
++int
++is_ecdsa_pkcs11(EC_KEY *ecdsa)
++{
++	if (EC_KEY_get_ex_data(ecdsa, ec_key_idx) != NULL)
++		return 1;
++	return 0;
++}
+ #endif /* HAVE_EC_KEY_METHOD_NEW */
+ 
++int
++is_rsa_pkcs11(RSA *rsa)
++{
++	if (RSA_get_ex_data(rsa, rsa_idx) != NULL)
++		return 1;
++	return 0;
++}
++
+ /* remove trailing spaces */
+ static void
+ rmspace(u_char *buf, size_t len)
+diff --color -ru -x regress -x autom4te.cache -x '*.o' -x '*.lo' -x Makefile -x config.status -x configure~ -x configure.ac openssh-8.7p1/ssh-pkcs11-client.c openssh-8.7p1-patched/ssh-pkcs11-client.c
+--- openssh-8.7p1/ssh-pkcs11-client.c	2023-05-24 09:39:44.950630607 +0200
++++ openssh-8.7p1-patched/ssh-pkcs11-client.c	2023-05-24 09:31:16.139092673 +0200
+@@ -225,8 +225,36 @@
+ static RSA_METHOD	*helper_rsa;
+ #ifdef HAVE_EC_KEY_METHOD_NEW
+ static EC_KEY_METHOD	*helper_ecdsa;
++
++int
++is_ecdsa_pkcs11(EC_KEY *ecdsa)
++{
++	const EC_KEY_METHOD *meth;
++	ECDSA_SIG *(*sign_sig)(const unsigned char *dgst, int dgstlen,
++		const BIGNUM *kinv, const BIGNUM *rp, EC_KEY *eckey) = NULL;
++
++	meth = EC_KEY_get_method(ecdsa);
++	EC_KEY_METHOD_get_sign(meth, NULL, NULL, &sign_sig);
++	if (sign_sig == ecdsa_do_sign)
++		return 1;
++	return 0;
++}
+ #endif /* HAVE_EC_KEY_METHOD_NEW */
+ 
++int
++is_rsa_pkcs11(RSA *rsa)
++{
++	const RSA_METHOD *meth;
++	int (*priv_enc)(int flen, const unsigned char *from,
++        	unsigned char *to, RSA *rsa, int padding) = NULL;
++
++	meth = RSA_get_method(rsa);
++	priv_enc = RSA_meth_get_priv_enc(meth);
++	if (priv_enc == rsa_encrypt)
++		return 1;
++	return 0;
++}
++
+ /* redirect private key crypto operations to the ssh-pkcs11-helper */
+ static void
+ wrap_key(struct sshkey *k)
+diff --color -ru -x regress -x autom4te.cache -x '*.o' -x '*.lo' -x Makefile -x config.status -x configure~ -x configure.ac openssh-8.7p1/ssh-pkcs11.h openssh-8.7p1-patched/ssh-pkcs11.h
+--- openssh-8.7p1/ssh-pkcs11.h	2023-05-24 09:39:44.950630607 +0200
++++ openssh-8.7p1-patched/ssh-pkcs11.h	2023-05-24 09:36:49.055714975 +0200
+@@ -39,6 +39,11 @@
+ 	    u_int32_t *);
+ #endif
+ 
++#ifdef HAVE_EC_KEY_METHOD_NEW
++int is_ecdsa_pkcs11(EC_KEY *ecdsa);
++#endif
++int is_rsa_pkcs11(RSA *rsa);
++
+ #if !defined(WITH_OPENSSL) && defined(ENABLE_PKCS11)
+ #undef ENABLE_PKCS11
+ #endif
+diff --color -ru -x regress -x autom4te.cache -x '*.o' -x '*.lo' -x Makefile -x config.status -x configure~ -x configure.ac openssh-8.7p1/ssh-rsa.c openssh-8.7p1-patched/ssh-rsa.c
+--- openssh-8.7p1/ssh-rsa.c	2023-05-24 09:39:45.003631184 +0200
++++ openssh-8.7p1-patched/ssh-rsa.c	2023-05-24 09:31:37.019319860 +0200
+@@ -174,8 +174,18 @@
+ 	if (RSA_bits(key->rsa) < SSH_RSA_MINIMUM_MODULUS_SIZE)
+ 		return SSH_ERR_KEY_LENGTH;
+ 
+-  	if ((ret = ssh_create_evp_rsa(key, &pkey)) != 0)
+-		return ret;
++#ifdef ENABLE_PKCS11
++	if (is_rsa_pkcs11(key->rsa)) {
++		if ((pkey = EVP_PKEY_new()) == NULL ||
++		    EVP_PKEY_set1_RSA(pkey, key->rsa) != 1)
++			return SSH_ERR_ALLOC_FAIL;
++	} else {
++#endif
++		if ((ret = ssh_create_evp_rsa(key, &pkey)) != 0)
++			return ret;
++#ifdef ENABLE_PKCS11
++	}
++#endif
+ 	ret = sshkey_calculate_signature(pkey, hash_alg, &sig, &len, data,
+ 	    datalen);
+ 	EVP_PKEY_free(pkey);

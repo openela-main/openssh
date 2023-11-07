@@ -1,0 +1,323 @@
+diff --git a/misc.c b/misc.c
+index a8e87430..f2135803 100644
+--- a/misc.c
++++ b/misc.c
+@@ -2399,15 +2399,26 @@ parse_absolute_time(const char *s, uint64_t *tp)
+ 	struct tm tm;
+ 	time_t tt;
+ 	char buf[32], *fmt;
++	const char *cp;
++	size_t l;
++	int is_utc = 0;
+ 
+ 	*tp = 0;
+ 
++	l = strlen(s);
++	if (l > 1 && strcasecmp(s + l - 1, "Z") == 0) {
++		is_utc = 1;
++		l--;
++	} else if (l > 3 && strcasecmp(s + l - 3, "UTC") == 0) {
++		is_utc = 1;
++		l -= 3;
++	}
+ 	/*
+ 	 * POSIX strptime says "The application shall ensure that there
+ 	 * is white-space or other non-alphanumeric characters between
+ 	 * any two conversion specifications" so arrange things this way.
+ 	 */
+-	switch (strlen(s)) {
++	switch (l) {
+ 	case 8: /* YYYYMMDD */
+ 		fmt = "%Y-%m-%d";
+ 		snprintf(buf, sizeof(buf), "%.4s-%.2s-%.2s", s, s + 4, s + 6);
+@@ -2427,10 +2438,15 @@ parse_absolute_time(const char *s, uint64_t *tp)
+ 	}
+ 
+ 	memset(&tm, 0, sizeof(tm));
+-	if (strptime(buf, fmt, &tm) == NULL)
+-		return SSH_ERR_INVALID_FORMAT;
+-	if ((tt = mktime(&tm)) < 0)
++	if ((cp = strptime(buf, fmt, &tm)) == NULL || *cp != '\0')
+ 		return SSH_ERR_INVALID_FORMAT;
++	if (is_utc) {
++		if ((tt = timegm(&tm)) < 0)
++			return SSH_ERR_INVALID_FORMAT;
++	} else {
++		if ((tt = mktime(&tm)) < 0)
++			return SSH_ERR_INVALID_FORMAT;
++	}
+ 	/* success */
+ 	*tp = (uint64_t)tt;
+ 	return 0;
+diff --git a/regress/unittests/misc/test_convtime.c b/regress/unittests/misc/test_convtime.c
+index ef6fd77d..4794dbd9 100644
+--- a/regress/unittests/misc/test_convtime.c
++++ b/regress/unittests/misc/test_convtime.c
+@@ -20,6 +20,7 @@
+ 
+ #include "log.h"
+ #include "misc.h"
++#include "ssherr.h"
+ 
+ void test_convtime(void);
+ 
+@@ -27,6 +28,7 @@ void
+ test_convtime(void)
+ {
+ 	char buf[1024];
++	uint64_t t;
+ 
+ 	TEST_START("misc_convtime");
+ 	ASSERT_INT_EQ(convtime("0"), 0);
+@@ -56,4 +58,64 @@ test_convtime(void)
+ 	ASSERT_INT_EQ(convtime("3550w5d3h14m8s"), -1);
+ #endif
+ 	TEST_DONE();
++
++	/* XXX timezones/DST make verification of this tricky */
++	/* XXX maybe setenv TZ and tzset() to make it unambiguous? */
++	TEST_START("misc_parse_absolute_time");
++	ASSERT_INT_EQ(parse_absolute_time("20000101", &t), 0);
++	ASSERT_INT_EQ(parse_absolute_time("200001011223", &t), 0);
++	ASSERT_INT_EQ(parse_absolute_time("20000101122345", &t), 0);
++
++	/* forced UTC TZ */
++	ASSERT_INT_EQ(parse_absolute_time("20000101Z", &t), 0);
++	ASSERT_U64_EQ(t, 946684800);
++	ASSERT_INT_EQ(parse_absolute_time("200001011223Z", &t), 0);
++	ASSERT_U64_EQ(t, 946729380);
++	ASSERT_INT_EQ(parse_absolute_time("20000101122345Z", &t), 0);
++	ASSERT_U64_EQ(t, 946729425);
++	ASSERT_INT_EQ(parse_absolute_time("20000101UTC", &t), 0);
++	ASSERT_U64_EQ(t, 946684800);
++	ASSERT_INT_EQ(parse_absolute_time("200001011223UTC", &t), 0);
++	ASSERT_U64_EQ(t, 946729380);
++	ASSERT_INT_EQ(parse_absolute_time("20000101122345UTC", &t), 0);
++	ASSERT_U64_EQ(t, 946729425);
++
++	/* Bad month */
++	ASSERT_INT_EQ(parse_absolute_time("20001301", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("20000001", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	/* Incomplete */
++	ASSERT_INT_EQ(parse_absolute_time("2", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("2000", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("20000", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("200001", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("2000010", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("200001010", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	/* Bad day, hour, minute, second */
++	ASSERT_INT_EQ(parse_absolute_time("20000199", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("200001019900", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("200001010099", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("20000101000099", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	/* Invalid TZ specifier */
++	ASSERT_INT_EQ(parse_absolute_time("20000101ZZ", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("20000101PDT", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("20000101U", &t),
++	    SSH_ERR_INVALID_FORMAT);
++	ASSERT_INT_EQ(parse_absolute_time("20000101UTCUTC", &t),
++	    SSH_ERR_INVALID_FORMAT);
++
++	TEST_DONE();
+ }
+diff --git a/ssh-keygen.1 b/ssh-keygen.1
+index 5f429813..6aeab1cb 100644
+--- a/ssh-keygen.1
++++ b/ssh-keygen.1
+@@ -511,8 +511,11 @@ Print the full public key to standard output after signature verification.
+ .It Cm verify-time Ns = Ns Ar timestamp
+ Specifies a time to use when validating signatures instead of the current
+ time.
+-The time may be specified as a date in YYYYMMDD format or a time
+-in YYYYMMDDHHMM[SS] format.
++The time may be specified as a date or time in the YYYYMMDD[Z] or
++in YYYYMMDDHHMM[SS][Z] formats.
++Dates and times will be interpreted in the current system time zone unless
++suffixed with a Z character, which causes them to be interpreted in the
++UTC time zone.
+ .El
+ .Pp
+ The
+@@ -603,31 +606,67 @@ A validity interval may consist of a single time, indicating that the
+ certificate is valid beginning now and expiring at that time, or may consist
+ of two times separated by a colon to indicate an explicit time interval.
+ .Pp
+-The start time may be specified as the string
++The start time may be specified as:
++.Bl -bullet -compact
++.It
++The string
+ .Dq always
+-to indicate the certificate has no specified start time,
+-a date in YYYYMMDD format, a time in YYYYMMDDHHMM[SS] format,
+-a relative time (to the current time) consisting of a minus sign followed by
+-an interval in the format described in the
++to indicate the certificate has no specified start time.
++.It
++A date or time in the system time zone formatted as YYYYMMDD or
++YYYYMMDDHHMM[SS].
++.It
++A date or time in the UTC time zone as YYYYMMDDZ or YYYYMMDDHHMM[SS]Z.
++.It
++A relative time before the current system time consisting of a minus sign
++followed by an interval in the format described in the
+ TIME FORMATS section of
+ .Xr sshd_config 5 .
++.It
++A raw seconds since epoch (Jan 1 1970 00:00:00 UTC) as a hexadecimal
++number beginning with
++.Dq 0x .
++.El
+ .Pp
+-The end time may be specified as a YYYYMMDD date, a YYYYMMDDHHMM[SS] time,
+-a relative time starting with a plus character or the string
++The end time may be specified similarly to the start time:
++.Bl -bullet -compact
++.It
++The string
+ .Dq forever
+-to indicate that the certificate has no expiry date.
++to indicate the certificate has no specified end time.
++.It
++A date or time in the system time zone formatted as YYYYMMDD or
++YYYYMMDDHHMM[SS].
++.It
++A date or time in the UTC time zone as YYYYMMDDZ or YYYYMMDDHHMM[SS]Z.
++.It
++A relative time after the current system time consisting of a plus sign
++followed by an interval in the format described in the
++TIME FORMATS section of
++.Xr sshd_config 5 .
++.It
++A raw seconds since epoch (Jan 1 1970 00:00:00 UTC) as a hexadecimal
++number beginning with
++.Dq 0x .
++.El
+ .Pp
+ For example:
+-.Dq +52w1d
+-(valid from now to 52 weeks and one day from now),
+-.Dq -4w:+4w
+-(valid from four weeks ago to four weeks from now),
+-.Dq 20100101123000:20110101123000
+-(valid from 12:30 PM, January 1st, 2010 to 12:30 PM, January 1st, 2011),
+-.Dq -1d:20110101
+-(valid from yesterday to midnight, January 1st, 2011),
+-.Dq -1m:forever
+-(valid from one minute ago and never expiring).
++.Bl -tag -width Ds
++.It +52w1d
++Valid from now to 52 weeks and one day from now.
++.It -4w:+4w
++Valid from four weeks ago to four weeks from now.
++.It 20100101123000:20110101123000
++Valid from 12:30 PM, January 1st, 2010 to 12:30 PM, January 1st, 2011.
++.It 20100101123000Z:20110101123000Z
++Similar, but interpreted in the UTC time zone rather than the system time zone.
++.It -1d:20110101
++Valid from yesterday to midnight, January 1st, 2011.
++.It 0x1:0x2000000000
++Valid from roughly early 1970 to May 2033.
++.It -1m:forever
++Valid from one minute ago and never expiring.
++.El
+ .It Fl v
+ Verbose mode.
+ Causes
+@@ -1206,7 +1245,10 @@ signature object and presented on the verification command-line must
+ match the specified list before the key will be considered acceptable.
+ .It Cm valid-after Ns = Ns "timestamp"
+ Indicates that the key is valid for use at or after the specified timestamp,
+-which may be a date in YYYYMMDD format or a time in YYYYMMDDHHMM[SS] format.
++which may be a date or time in the YYYYMMDD[Z] or YYYYMMDDHHMM[SS][Z] formats.
++Dates and times will be interpreted in the current system time zone unless
++suffixed with a Z character, which causes them to be interpreted in the UTC
++time zone.
+ .It Cm valid-before Ns = Ns "timestamp"
+ Indicates that the key is valid for use at or before the specified timestamp.
+ .El
+diff --git a/ssh-keygen.c b/ssh-keygen.c
+index 20b321cc..9b2beda0 100644
+--- a/ssh-keygen.c
++++ b/ssh-keygen.c
+@@ -1916,6 +1916,21 @@ parse_relative_time(const char *s, time_t now)
+ 	return now + (u_int64_t)(secs * mul);
+ }
+ 
++static void
++parse_hex_u64(const char *s, uint64_t *up)
++{
++	char *ep;
++	unsigned long long ull;
++
++	errno = 0;
++	ull = strtoull(s, &ep, 16);
++	if (*s == '\0' || *ep != '\0')
++		fatal("Invalid certificate time: not a number");
++	if (errno == ERANGE && ull == ULONG_MAX)
++		fatal_fr(SSH_ERR_SYSTEM_ERROR, "Invalid certificate time");
++	*up = (uint64_t)ull;
++}
++
+ static void
+ parse_cert_times(char *timespec)
+ {
+@@ -1938,8 +1953,8 @@ parse_cert_times(char *timespec)
+ 
+ 	/*
+ 	 * from:to, where
+-	 * from := [+-]timespec | YYYYMMDD | YYYYMMDDHHMMSS | "always"
+-	 *   to := [+-]timespec | YYYYMMDD | YYYYMMDDHHMMSS | "forever"
++	 * from := [+-]timespec | YYYYMMDD | YYYYMMDDHHMMSS | 0x... | "always"
++	 *   to := [+-]timespec | YYYYMMDD | YYYYMMDDHHMMSS | 0x... | "forever"
+ 	 */
+ 	from = xstrdup(timespec);
+ 	to = strchr(from, ':');
+@@ -1951,6 +1966,8 @@ parse_cert_times(char *timespec)
+ 		cert_valid_from = parse_relative_time(from, now);
+ 	else if (strcmp(from, "always") == 0)
+ 		cert_valid_from = 0;
++	else if (strncmp(from, "0x", 2) == 0)
++		parse_hex_u64(from, &cert_valid_from);
+ 	else if (parse_absolute_time(from, &cert_valid_from) != 0)
+ 		fatal("Invalid from time \"%s\"", from);
+ 
+@@ -1958,6 +1975,8 @@ parse_cert_times(char *timespec)
+ 		cert_valid_to = parse_relative_time(to, now);
+ 	else if (strcmp(to, "forever") == 0)
+ 		cert_valid_to = ~(u_int64_t)0;
++	else if (strncmp(to, "0x", 2) == 0)
++		parse_hex_u64(to, &cert_valid_to);
+ 	else if (parse_absolute_time(to, &cert_valid_to) != 0)
+ 		fatal("Invalid to time \"%s\"", to);
+ 
+diff --git a/sshd.8 b/sshd.8
+index 2b50514e..8ccc5bc0 100644
+--- a/sshd.8
++++ b/sshd.8
+@@ -533,8 +533,9 @@ controlled via the
+ option.
+ .It Cm expiry-time="timespec"
+ Specifies a time after which the key will not be accepted.
+-The time may be specified as a YYYYMMDD date or a YYYYMMDDHHMM[SS] time
+-in the system time-zone.
++The time may be specified as a YYYYMMDD[Z] date or a YYYYMMDDHHMM[SS][Z] time.
++Dates and times will be interpreted in the system time zone unless suffixed
++by a Z character, in which case they will be interpreted in the UTC time zone.
+ .It Cm from="pattern-list"
+ Specifies that in addition to public key authentication, either the canonical
+ name of the remote host or its IP address must be present in the

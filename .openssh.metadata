@@ -1,0 +1,4 @@
+7ca34b8bb24ae9e50f33792b7091b3841d7e1b440ff57bc9fabddf01e2ed1e24 SOURCES/openssh-8.7p1.tar.gz
+bb18c454a3e5d3738cb26a1c89e17c467d7a59529ec92251b26461ae04771eba SOURCES/openssh-8.7p1.tar.gz.asc
+9d440de6627940c09eadc342cc7d8bc9823654fd1a2be11c4f5820dd073054e0 SOURCES/pam_ssh_agent_auth-0.10.4.tar.gz
+b07d34756be72d4e294c05a91590355b68bbf3c3b466ea88d21aae168e97c7dc SOURCES/sshd-keygen.target

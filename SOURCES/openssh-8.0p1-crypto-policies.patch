@@ -1,0 +1,502 @@
+diff --color -ru a/ssh_config.5 b/ssh_config.5
+--- a/ssh_config.5	2022-07-12 15:05:22.550013071 +0200
++++ b/ssh_config.5	2022-07-12 15:17:20.016704545 +0200
+@@ -373,17 +373,13 @@
+ .Qq *.c.example.com
+ domains.
+ .It Cm CASignatureAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies which algorithms are allowed for signing of certificates
+ by certificate authorities (CAs).
+-The default is:
+-.Bd -literal -offset indent
+-ssh-ed25519,ecdsa-sha2-nistp256,
+-ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
+-sk-ssh-ed25519@openssh.com,
+-sk-ecdsa-sha2-nistp256@openssh.com,
+-rsa-sha2-512,rsa-sha2-256
+-.Ed
+-.Pp
+ If the specified list begins with a
+ .Sq +
+ character, then the specified algorithms will be appended to the default set
+@@ -445,20 +441,25 @@
+ (the default),
+ the check will not be executed.
+ .It Cm Ciphers
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the ciphers allowed and their order of preference.
+ Multiple ciphers must be comma-separated.
+ If the specified list begins with a
+ .Sq +
+-character, then the specified ciphers will be appended to the default set
+-instead of replacing them.
++character, then the specified ciphers will be appended to the built-in
++openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified ciphers (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified ciphers will be placed at the head of the
+-default set.
++built-in openssh default set.
+ .Pp
+ The supported ciphers are:
+ .Bd -literal -offset indent
+@@ -474,13 +475,6 @@
+ chacha20-poly1305@openssh.com
+ .Ed
+ .Pp
+-The default is:
+-.Bd -literal -offset indent
+-chacha20-poly1305@openssh.com,
+-aes128-ctr,aes192-ctr,aes256-ctr,
+-aes128-gcm@openssh.com,aes256-gcm@openssh.com
+-.Ed
+-.Pp
+ The list of available ciphers may also be obtained using
+ .Qq ssh -Q cipher .
+ .It Cm ClearAllForwardings
+@@ -874,6 +868,11 @@
+ The default is
+ .Dq no .
+ .It Cm GSSAPIKexAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ The list of key exchange algorithms that are offered for GSSAPI
+ key exchange. Possible values are
+ .Bd -literal -offset 3n
+@@ -886,10 +885,8 @@
+ gss-curve25519-sha256-
+ .Ed
+ .Pp
+-The default is
+-.Dq gss-group14-sha256-,gss-group16-sha512-,gss-nistp256-sha256-,
+-gss-curve25519-sha256-,gss-group14-sha1-,gss-gex-sha1- .
+ This option only applies to connections using GSSAPI.
++.Pp
+ .It Cm HashKnownHosts
+ Indicates that
+ .Xr ssh 1
+@@ -1219,29 +1216,25 @@
+ and
+ .Cm pam .
+ .It Cm KexAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the available KEX (Key Exchange) algorithms.
+ Multiple algorithms must be comma-separated.
+ If the specified list begins with a
+ .Sq +
+-character, then the specified methods will be appended to the default set
+-instead of replacing them.
++character, then the specified methods will be appended to the built-in
++openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified methods (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified methods will be placed at the head of the
+-default set.
+-The default is:
+-.Bd -literal -offset indent
+-curve25519-sha256,curve25519-sha256@libssh.org,
+-ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,
+-diffie-hellman-group-exchange-sha256,
+-diffie-hellman-group16-sha512,
+-diffie-hellman-group18-sha512,
+-diffie-hellman-group14-sha256
+-.Ed
++built-in openssh default set.
+ .Pp
+ The list of available key exchange algorithms may also be obtained using
+ .Qq ssh -Q kex .
+@@ -1351,37 +1344,33 @@
+ file.
+ This option is intended for debugging and no overrides are enabled by default.
+ .It Cm MACs
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the MAC (message authentication code) algorithms
+ in order of preference.
+ The MAC algorithm is used for data integrity protection.
+ Multiple algorithms must be comma-separated.
+ If the specified list begins with a
+ .Sq +
+-character, then the specified algorithms will be appended to the default set
+-instead of replacing them.
++character, then the specified algorithms will be appended to the built-in
++openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified algorithms (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified algorithms will be placed at the head of the
+-default set.
++built-in openssh default set.
+ .Pp
+ The algorithms that contain
+ .Qq -etm
+ calculate the MAC after encryption (encrypt-then-mac).
+ These are considered safer and their use recommended.
+ .Pp
+-The default is:
+-.Bd -literal -offset indent
+-umac-64-etm@openssh.com,umac-128-etm@openssh.com,
+-hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,
+-hmac-sha1-etm@openssh.com,
+-umac-64@openssh.com,umac-128@openssh.com,
+-hmac-sha2-256,hmac-sha2-512,hmac-sha1
+-.Ed
+-.Pp
+ The list of available MAC algorithms may also be obtained using
+ .Qq ssh -Q mac .
+ .It Cm NoHostAuthenticationForLocalhost
+@@ -1553,37 +1542,25 @@
+ The default is
+ .Cm no .
+ .It Cm PubkeyAcceptedAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the signature algorithms that will be used for public key
+ authentication as a comma-separated list of patterns.
+ If the specified list begins with a
+ .Sq +
+-character, then the algorithms after it will be appended to the default
+-instead of replacing it.
++character, then the algorithms after it will be appended to the built-in
++openssh default instead of replacing it.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified algorithms (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified algorithms will be placed at the head of the
+-default set.
+-The default for this option is:
+-.Bd -literal -offset 3n
+-ssh-ed25519-cert-v01@openssh.com,
+-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+-ecdsa-sha2-nistp384-cert-v01@openssh.com,
+-ecdsa-sha2-nistp521-cert-v01@openssh.com,
+-sk-ssh-ed25519-cert-v01@openssh.com,
+-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+-rsa-sha2-512-cert-v01@openssh.com,
+-rsa-sha2-256-cert-v01@openssh.com,
+-ssh-rsa-cert-v01@openssh.com,
+-ssh-ed25519,
+-ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
+-sk-ssh-ed25519@openssh.com,
+-sk-ecdsa-sha2-nistp256@openssh.com,
+-rsa-sha2-512,rsa-sha2-256,ssh-rsa
+-.Ed
++built-in openssh default set.
+ .Pp
+ The list of available signature algorithms may also be obtained using
+ .Qq ssh -Q PubkeyAcceptedAlgorithms .
+diff --color -ru a/sshd_config.5 b/sshd_config.5
+--- a/sshd_config.5	2022-07-12 15:05:22.535012771 +0200
++++ b/sshd_config.5	2022-07-12 15:15:33.394809258 +0200
+@@ -373,17 +373,13 @@
+ then no banner is displayed.
+ By default, no banner is displayed.
+ .It Cm CASignatureAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies which algorithms are allowed for signing of certificates
+ by certificate authorities (CAs).
+-The default is:
+-.Bd -literal -offset indent
+-ssh-ed25519,ecdsa-sha2-nistp256,
+-ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
+-sk-ssh-ed25519@openssh.com,
+-sk-ecdsa-sha2-nistp256@openssh.com,
+-rsa-sha2-512,rsa-sha2-256
+-.Ed
+-.Pp
+ If the specified list begins with a
+ .Sq +
+ character, then the specified algorithms will be appended to the default set
+@@ -450,20 +446,25 @@
+ indicating not to
+ .Xr chroot 2 .
+ .It Cm Ciphers
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the ciphers allowed.
+ Multiple ciphers must be comma-separated.
+ If the specified list begins with a
+ .Sq +
+-character, then the specified ciphers will be appended to the default set
+-instead of replacing them.
++character, then the specified ciphers will be appended to the built-in
++openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified ciphers (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified ciphers will be placed at the head of the
+-default set.
++built-in openssh default set.
+ .Pp
+ The supported ciphers are:
+ .Pp
+@@ -490,13 +491,6 @@
+ chacha20-poly1305@openssh.com
+ .El
+ .Pp
+-The default is:
+-.Bd -literal -offset indent
+-chacha20-poly1305@openssh.com,
+-aes128-ctr,aes192-ctr,aes256-ctr,
+-aes128-gcm@openssh.com,aes256-gcm@openssh.com
+-.Ed
+-.Pp
+ The list of available ciphers may also be obtained using
+ .Qq ssh -Q cipher .
+ .It Cm ClientAliveCountMax
+@@ -685,21 +679,22 @@
+ .Cm GSSAPIKeyExchange
+ needs to be enabled in the server and also used by the client.
+ .It Cm GSSAPIKexAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ The list of key exchange algorithms that are accepted by GSSAPI
+ key exchange. Possible values are
+ .Bd -literal -offset 3n
+-gss-gex-sha1-,
+-gss-group1-sha1-,
+-gss-group14-sha1-,
+-gss-group14-sha256-,
+-gss-group16-sha512-,
+-gss-nistp256-sha256-,
++gss-gex-sha1-
++gss-group1-sha1-
++gss-group14-sha1-
++gss-group14-sha256-
++gss-group16-sha512-
++gss-nistp256-sha256-
+ gss-curve25519-sha256-
+ .Ed
+-.Pp
+-The default is
+-.Dq gss-group14-sha256-,gss-group16-sha512-,gss-nistp256-sha256-,
+-gss-curve25519-sha256-,gss-group14-sha1-,gss-gex-sha1- .
+ This option only applies to connections using GSSAPI.
+ .It Cm HostbasedAcceptedAlgorithms
+ Specifies the signature algorithms that will be accepted for hostbased
+@@ -799,26 +794,13 @@
+ .Ev SSH_AUTH_SOCK
+ environment variable.
+ .It Cm HostKeyAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the host key signature algorithms
+ that the server offers.
+-The default for this option is:
+-.Bd -literal -offset 3n
+-ssh-ed25519-cert-v01@openssh.com,
+-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+-ecdsa-sha2-nistp384-cert-v01@openssh.com,
+-ecdsa-sha2-nistp521-cert-v01@openssh.com,
+-sk-ssh-ed25519-cert-v01@openssh.com,
+-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+-rsa-sha2-512-cert-v01@openssh.com,
+-rsa-sha2-256-cert-v01@openssh.com,
+-ssh-rsa-cert-v01@openssh.com,
+-ssh-ed25519,
+-ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
+-sk-ssh-ed25519@openssh.com,
+-sk-ecdsa-sha2-nistp256@openssh.com,
+-rsa-sha2-512,rsa-sha2-256,ssh-rsa
+-.Ed
+-.Pp
+ The list of available signature algorithms may also be obtained using
+ .Qq ssh -Q HostKeyAlgorithms .
+ .It Cm IgnoreRhosts
+@@ -965,20 +947,25 @@
+ The default is
+ .Cm yes .
+ .It Cm KexAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the available KEX (Key Exchange) algorithms.
+ Multiple algorithms must be comma-separated.
+ Alternately if the specified list begins with a
+ .Sq +
+-character, then the specified methods will be appended to the default set
+-instead of replacing them.
++character, then the specified methods will be appended to the built-in
++openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified methods (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified methods will be placed at the head of the
+-default set.
++built-in openssh default set.
+ The supported algorithms are:
+ .Pp
+ .Bl -item -compact -offset indent
+@@ -1010,15 +997,6 @@
+ sntrup761x25519-sha512@openssh.com
+ .El
+ .Pp
+-The default is:
+-.Bd -literal -offset indent
+-curve25519-sha256,curve25519-sha256@libssh.org,
+-ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,
+-diffie-hellman-group-exchange-sha256,
+-diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,
+-diffie-hellman-group14-sha256
+-.Ed
+-.Pp
+ The list of available key exchange algorithms may also be obtained using
+ .Qq ssh -Q KexAlgorithms .
+ .It Cm ListenAddress
+@@ -1104,21 +1082,26 @@
+ file.
+ This option is intended for debugging and no overrides are enabled by default.
+ .It Cm MACs
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the available MAC (message authentication code) algorithms.
+ The MAC algorithm is used for data integrity protection.
+ Multiple algorithms must be comma-separated.
+ If the specified list begins with a
+ .Sq +
+-character, then the specified algorithms will be appended to the default set
+-instead of replacing them.
++character, then the specified algorithms will be appended to the built-in
++openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified algorithms (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified algorithms will be placed at the head of the
+-default set.
++built-in openssh default set.
+ .Pp
+ The algorithms that contain
+ .Qq -etm
+@@ -1161,15 +1144,6 @@
+ umac-128-etm@openssh.com
+ .El
+ .Pp
+-The default is:
+-.Bd -literal -offset indent
+-umac-64-etm@openssh.com,umac-128-etm@openssh.com,
+-hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,
+-hmac-sha1-etm@openssh.com,
+-umac-64@openssh.com,umac-128@openssh.com,
+-hmac-sha2-256,hmac-sha2-512,hmac-sha1
+-.Ed
+-.Pp
+ The list of available MAC algorithms may also be obtained using
+ .Qq ssh -Q mac .
+ .It Cm Match
+@@ -1548,37 +1522,25 @@
+ The default is
+ .Cm yes .
+ .It Cm PubkeyAcceptedAlgorithms
++The default is handled system-wide by
++.Xr crypto-policies 7 .
++Information about defaults, how to modify the defaults and how to customize existing policies with sub-policies are present in manual page
++.Xr update-crypto-policies 8 .
++.Pp
+ Specifies the signature algorithms that will be accepted for public key
+ authentication as a list of comma-separated patterns.
+ Alternately if the specified list begins with a
+ .Sq +
+-character, then the specified algorithms will be appended to the default set
+-instead of replacing them.
++character, then the specified algorithms will be appended to the built-in
++openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq -
+ character, then the specified algorithms (including wildcards) will be removed
+-from the default set instead of replacing them.
++from the built-in openssh default set instead of replacing them.
+ If the specified list begins with a
+ .Sq ^
+ character, then the specified algorithms will be placed at the head of the
+-default set.
+-The default for this option is:
+-.Bd -literal -offset 3n
+-ssh-ed25519-cert-v01@openssh.com,
+-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+-ecdsa-sha2-nistp384-cert-v01@openssh.com,
+-ecdsa-sha2-nistp521-cert-v01@openssh.com,
+-sk-ssh-ed25519-cert-v01@openssh.com,
+-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+-rsa-sha2-512-cert-v01@openssh.com,
+-rsa-sha2-256-cert-v01@openssh.com,
+-ssh-rsa-cert-v01@openssh.com,
+-ssh-ed25519,
+-ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
+-sk-ssh-ed25519@openssh.com,
+-sk-ecdsa-sha2-nistp256@openssh.com,
+-rsa-sha2-512,rsa-sha2-256,ssh-rsa
+-.Ed
++built-in openssh default set.
+ .Pp
+ The list of available signature algorithms may also be obtained using
+ .Qq ssh -Q PubkeyAcceptedAlgorithms .

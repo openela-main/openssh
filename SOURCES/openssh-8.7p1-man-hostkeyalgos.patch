@@ -1,0 +1,31 @@
+diff --color -ru -x regress -x autom4te.cache -x '*.o' -x '*.lo' -x Makefile -x config.status -x configure~ -x configure.ac openssh-8.7p1/ssh_config.5 openssh-8.7p1-patched/ssh_config.5
+--- openssh-8.7p1/ssh_config.5	2023-06-02 09:14:40.279373577 +0200
++++ openssh-8.7p1-patched/ssh_config.5	2023-05-30 16:01:04.533848172 +0200
+@@ -989,6 +989,17 @@
+ .Pp
+ The list of available signature algorithms may also be obtained using
+ .Qq ssh -Q HostKeyAlgorithms .
++.Pp
++The proposed
++.Cm HostKeyAlgorithms
++during KEX are limited to the set of algorithms that is defined in
++.Cm PubkeyAcceptedAlgorithms
++and therefore they are indirectly affected by system-wide
++.Xr crypto_policies 7 .
++.Xr crypto_policies 7 can not handle the list of host key algorithms directly as doing so
++would break the order given by the
++.Pa known_hosts
++file.
+ .It Cm HostKeyAlias
+ Specifies an alias that should be used instead of the
+ real host name when looking up or saving the host key
+@@ -1564,6 +1575,9 @@
+ .Pp
+ The list of available signature algorithms may also be obtained using
+ .Qq ssh -Q PubkeyAcceptedAlgorithms .
++.Pp
++This option affects also
++.Cm HostKeyAlgorithms
+ .It Cm PubkeyAuthentication
+ Specifies whether to try public key authentication.
+ The argument to this keyword must be

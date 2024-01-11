@@ -74,33 +74,6 @@ diff -up openssh-7.4p1/channels.c.coverity openssh-7.4p1/channels.c
  			close(c->sock);
  			c->sock = c->rfd = c->wfd = sock;
  			channel_find_maxfd(ssh->chanctxt);
-@@ -3804,7 +3804,7 @@ int
- channel_request_remote_forwarding(struct ssh *ssh, struct Forward *fwd)
- {
- 	int r, success = 0, idx = -1;
--	char *host_to_connect, *listen_host, *listen_path;
-+	char *host_to_connect = NULL, *listen_host = NULL, *listen_path = NULL;
- 	int port_to_connect, listen_port;
- 
- 	/* Send the forward request to the remote side. */
-@@ -3832,7 +3832,6 @@ channel_request_remote_forwarding(struct
- 	success = 1;
- 	if (success) {
- 		/* Record that connection to this host/port is permitted. */
--		host_to_connect = listen_host = listen_path = NULL;
- 		port_to_connect = listen_port = 0;
- 		if (fwd->connect_path != NULL) {
- 			host_to_connect = xstrdup(fwd->connect_path);
-@@ -3853,6 +3852,9 @@ channel_request_remote_forwarding(struct
- 		    host_to_connect, port_to_connect,
- 		    listen_host, listen_path, listen_port, NULL);
- 	}
-+	free(host_to_connect);
-+	free(listen_host);
-+	free(listen_path);
- 	return idx;
- }
- 
 diff -up openssh-8.5p1/dns.c.coverity openssh-8.5p1/dns.c
 --- openssh-8.5p1/dns.c.coverity	2021-03-02 11:31:47.000000000 +0100
 +++ openssh-8.5p1/dns.c	2021-03-24 12:03:33.783968166 +0100

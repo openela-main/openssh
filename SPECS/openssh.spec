@@ -51,7 +51,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.7p1
-%global openssh_rel 30
+%global openssh_rel 34
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 5
 
@@ -265,6 +265,20 @@ Patch1007: openssh-8.7p1-nohostsha1proof.patch
 # upstream 12da7823336434a403f25c7cc0c2c6aed0737a35
 # to fix 1005
 Patch1008: openssh-8.7p1-CVE-2023-25136.patch
+
+# fips compliance for signing, dh, ecdh
+Patch1009: openssh-8.7p1-evp-fips-compl-sign.patch
+Patch1010: openssh-8.7p1-evp-fips-compl-dh.patch
+Patch1011: openssh-8.7p1-evp-fips-compl-ecdh.patch
+Patch1012: openssh-8.7p1-evp-pkcs11.patch
+
+# clarify rhbz#2068423 on the man page of ssh_config
+Patch1013: openssh-8.7p1-man-hostkeyalgos.patch
+# upstream commits
+# ec1ddb72a146fd66d18df9cd423517453a5d8044
+# b98a42afb69d60891eb0488935990df6ee571c4
+# a00f59a645072e5f5a8d207af15916a7b23e2642
+Patch1014: openssh-8.7p1-UTC-time-parse.patch
 # upsream commit
 # b23fe83f06ee7e721033769cfa03ae840476d280
 Patch1015: openssh-9.3p1-upstream-cve-2023-38408.patch
@@ -475,10 +489,18 @@ popd
 %patch1006 -p1 -b .negotiate-supported-algs
 
 %patch100 -p1 -b .coverity
-%patch1015 -p1 -b .cve-2023-38408
 
 %patch1007 -p1 -b .sshrsacheck
 %patch1008 -p1 -b .cve-2023-25136
+
+%patch1009 -p1 -b .evp_fips_sign
+%patch1010 -p1 -b .evp_fips_dh
+%patch1011 -p1 -b .evp_fips_ecdh
+%patch1012 -p1 -b .evp_pkcs11
+
+%patch1013 -p1 -b .man-hostkeyalgos
+%patch1014 -p1 -b .utc_parse
+%patch1015 -p1 -b .cve-2023-38408
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -765,9 +787,44 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
-* Thu Jul 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-30
+* Thu Jul 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34
 - Avoid remote code execution in ssh-agent PKCS#11 support
   Resolves: CVE-2023-38408
+
+* Tue Jun 13 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-33
+- Allow specifying validity interval in UTC
+  Resolves: rhbz#2115043
+
+* Wed May 24 2023 Norbert Pocs <npocs@redhat.com> - 8.7p1-32
+- Fix pkcs11 issue with the recent changes
+- Delete unnecessary log messages from previous compl-dh patch
+- Add ssh_config man page explanation on rhbz#2068423
+- Resolves: rhbz#2207793, rhbz#2209096
+
+* Tue May 16 2023 Norbert Pocs <npocs@redhat.com> - 8.7p1-31
+- Fix minor issues with openssh-8.7p1-evp-fips-compl-dh.patch:
+- Check return values
+- Use EVP API to get the size of DH
+- Add some log debug lines
+- Related: rhbz#2091694
+
+* Thu Apr 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-30
+- Some non-terminating processes were listening on ports.
+  Resolves: rhbz#2177768
+- On sshd startup, we check whether signing using the SHA1 for signing is
+  available and don't use it when it isn't.
+- On ssh private key conversion we explicitly use SHA2 for testing RSA keys.
+- In sshd, when SHA1 signatures are unavailable, we fallback (fall forward :) )
+  to SHA2 on host keys proof confirmation.
+- On a client side we permit SHA2-based proofs from server when requested SHA1
+  proof (or didn't specify the hash algorithm that implies SHA1 on the client
+  side). It is aligned with already present exception for RSA certificates.
+- We fallback to SHA2 if SHA1 signatures is not available on the client side
+  (file sshconnect2.c).
+- We skip dss-related tests (they don't work without SHA1).
+  Resolves: rhbz#2070163
+- FIPS compliance efforts for dh, ecdh and signing
+  Resolves: rhbz#2091694
 
 * Thu Apr 06 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-29
 - Resolve possible self-DoS with some clients

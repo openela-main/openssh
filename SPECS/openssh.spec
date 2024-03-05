@@ -73,7 +73,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}%{?rescue_rel}
+Release: %{openssh_rel}%{?dist}%{?rescue_rel}.2
 URL: http://www.openssh.com/portable.html
 #URL1: http://pamsshagentauth.sourceforge.net
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
@@ -280,6 +280,10 @@ Patch987: openssh-8.0p1-ipv6-process.patch
 # upsream commit
 # b23fe83f06ee7e721033769cfa03ae840476d280
 Patch1015: openssh-9.3p1-upstream-cve-2023-38408.patch
+#upstream commit 1edb00c58f8a6875fad6a497aa2bacf37f9e6cd5
+Patch1018: openssh-9.6p1-CVE-2023-48795.patch
+#upstream commit 7ef3787c84b6b524501211b11a26c742f829af1a
+Patch1019: openssh-9.6p1-CVE-2023-51385.patch
 
 License: BSD
 Group: Applications/Internet
@@ -372,7 +376,7 @@ Requires: openssh = %{version}-%{release}
 Summary: PAM module for authentication with ssh-agent
 Group: System Environment/Base
 Version: %{pam_ssh_agent_ver}
-Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}%{?rescue_rel}
+Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}%{?rescue_rel}.2
 License: BSD
 
 %description
@@ -519,7 +523,10 @@ popd
 %patch700 -p1 -b .fips
 
 %patch100 -p1 -b .coverity
+
 %patch1015 -p1 -b .cve-2023-38408
+%patch1018 -p1 -b .cve-2023-48795
+%patch1019 -p1 -b .cve-2023-51385
 
 autoreconf
 pushd pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -805,8 +812,19 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
-* Thu Jul 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-19
+* Mon Jan 08 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-19.2
+- Fix Terrapin attack
+  Resolves: RHEL-19762
+
+* Thu Dec 21 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-19.1
+- Fix Terrapin attack
+  Resolves: RHEL-19762
+- Forbid shell metasymbols in username/hostname
+  Resolves: RHEL-19820
+
+* Thu Aug 24 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-19
 - rebuilt
+  Related: CVE-2023-38408
 
 * Thu Jul 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-18
 - Avoid remote code execution in ssh-agent PKCS#11 support

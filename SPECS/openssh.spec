@@ -58,7 +58,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}
+Release: %{openssh_rel}%{?dist}.3
 URL: http://www.openssh.com/portable.html
 #URL1: https://github.com/jbeverly/pam_ssh_agent_auth/
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
@@ -282,6 +282,10 @@ Patch1014: openssh-8.7p1-UTC-time-parse.patch
 # upsream commit
 # b23fe83f06ee7e721033769cfa03ae840476d280
 Patch1015: openssh-9.3p1-upstream-cve-2023-38408.patch
+#upstream commit 1edb00c58f8a6875fad6a497aa2bacf37f9e6cd5
+Patch1018: openssh-9.6p1-CVE-2023-48795.patch
+#upstream commit 7ef3787c84b6b524501211b11a26c742f829af1a
+Patch1019: openssh-9.6p1-CVE-2023-51385.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -356,7 +360,7 @@ Requires: openssh = %{version}-%{release}
 %package -n pam_ssh_agent_auth
 Summary: PAM module for authentication with ssh-agent
 Version: %{pam_ssh_agent_ver}
-Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}
+Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}.3
 License: BSD
 
 %description
@@ -501,6 +505,8 @@ popd
 %patch1013 -p1 -b .man-hostkeyalgos
 %patch1014 -p1 -b .utc_parse
 %patch1015 -p1 -b .cve-2023-38408
+%patch1018 -p1 -b .cve-2023-48795
+%patch1019 -p1 -b .cve-2023-51385
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -787,6 +793,19 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Mon Jan 08 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34.3
+- rebuilt
+
+* Mon Jan 08 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34.2
+- Fix Terrapin attack
+  Resolves: RHEL-19764
+
+* Thu Dec 21 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34.1
+- Fix Terrapin attack (CVE-2023-48795)
+  Resolves: RHEL-19764
+- Forbid shell metasymbols in username/hostname (CVE-2023-51385)
+  Resolves: RHEL-19822
+
 * Thu Jul 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34
 - Avoid remote code execution in ssh-agent PKCS#11 support
   Resolves: CVE-2023-38408

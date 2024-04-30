@@ -7,10 +7,6 @@
 
 %global _hardened_build 1
 
-# OpenSSH privilege separation requires a user & group ID
-%global sshd_uid    74
-%global sshd_gid    74
-
 # Do we want to disable building of gnome-askpass? (1=yes 0=no)
 %global no_gnome_askpass 0
 
@@ -51,14 +47,14 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.7p1
-%global openssh_rel 34
+%global openssh_rel 38
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 5
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}.3
+Release: %{openssh_rel}%{?dist}
 URL: http://www.openssh.com/portable.html
 #URL1: https://github.com/jbeverly/pam_ssh_agent_auth/
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
@@ -76,6 +72,8 @@ Source12: sshd-keygen@.service
 Source13: sshd-keygen
 Source15: sshd-keygen.target
 Source16: ssh-agent.service
+Source17: openssh-systemd-sysusers.conf
+Source18: openssh-server-systemd-sysusers.conf
 
 #https://bugzilla.mindrot.org/show_bug.cgi?id=2581
 Patch100: openssh-6.7p1-coverity.patch
@@ -282,6 +280,10 @@ Patch1014: openssh-8.7p1-UTC-time-parse.patch
 # upsream commit
 # b23fe83f06ee7e721033769cfa03ae840476d280
 Patch1015: openssh-9.3p1-upstream-cve-2023-38408.patch
+#upstream commit b7afd8a4ecaca8afd3179b55e9db79c0ff210237
+Patch1016: openssh-9.3p1-openssl-compat.patch
+#upstream commit 01dbf3d46651b7d6ddf5e45d233839bbfffaeaec
+Patch1017: openssh-9.4p2-limit-delay.patch
 #upstream commit 1edb00c58f8a6875fad6a497aa2bacf37f9e6cd5
 Patch1018: openssh-9.6p1-CVE-2023-48795.patch
 #upstream commit 7ef3787c84b6b524501211b11a26c742f829af1a
@@ -360,7 +362,7 @@ Requires: openssh = %{version}-%{release}
 %package -n pam_ssh_agent_auth
 Summary: PAM module for authentication with ssh-agent
 Version: %{pam_ssh_agent_ver}
-Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}.3
+Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}
 License: BSD
 
 %description
@@ -505,6 +507,8 @@ popd
 %patch1013 -p1 -b .man-hostkeyalgos
 %patch1014 -p1 -b .utc_parse
 %patch1015 -p1 -b .cve-2023-38408
+%patch1016 -p1 -b .openssl3compat
+%patch1017 -p1 -b .limitdelay
 %patch1018 -p1 -b .cve-2023-48795
 %patch1019 -p1 -b .cve-2023-51385
 
@@ -652,6 +656,8 @@ install -m744 %{SOURCE13} $RPM_BUILD_ROOT/%{_libexecdir}/openssh/sshd-keygen
 install -m755 contrib/ssh-copy-id $RPM_BUILD_ROOT%{_bindir}/
 install contrib/ssh-copy-id.1 $RPM_BUILD_ROOT%{_mandir}/man1/
 install -d -m711 ${RPM_BUILD_ROOT}/%{_datadir}/empty.sshd
+install -p -D -m 0644 %{SOURCE17} %{buildroot}%{_sysusersdir}/openssh.conf
+install -p -D -m 0644 %{SOURCE18} %{buildroot}%{_sysusersdir}/openssh-server.conf
 
 %if ! %{no_gnome_askpass}
 install contrib/gnome-ssh-askpass $RPM_BUILD_ROOT%{_libexecdir}/openssh/gnome-ssh-askpass
@@ -680,13 +686,10 @@ install -m 755 -d $RPM_BUILD_ROOT%{_libdir}/sshtest/
 install -m 755 regress/misc/sk-dummy/sk-dummy.so $RPM_BUILD_ROOT%{_libdir}/sshtest
 
 %pre
-getent group ssh_keys >/dev/null || groupadd -r ssh_keys || :
+%sysusers_create_compat %{SOURCE17}
 
 %pre server
-getent group sshd >/dev/null || groupadd -g %{sshd_uid} -r sshd || :
-getent passwd sshd >/dev/null || \
-  useradd -c "Privilege-separated SSH" -u %{sshd_uid} -g sshd \
-  -s /sbin/nologin -r -d /usr/share/empty.sshd sshd 2> /dev/null || :
+%sysusers_create_compat %{SOURCE18}
 
 %post server
 %systemd_post sshd.service sshd.socket
@@ -724,6 +727,7 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %dir %{_libexecdir}/openssh
 %attr(2555,root,ssh_keys) %{_libexecdir}/openssh/ssh-keysign
 %attr(0644,root,root) %{_mandir}/man8/ssh-keysign.8*
+%attr(0644,root,root) %{_sysusersdir}/openssh.conf
 
 %files clients
 %attr(0755,root,root) %{_bindir}/ssh
@@ -769,6 +773,7 @@ test -f %{sysconfig_anaconda} && \
 %attr(0644,root,root) %{_unitdir}/sshd.socket
 %attr(0644,root,root) %{_unitdir}/sshd-keygen@.service
 %attr(0644,root,root) %{_unitdir}/sshd-keygen.target
+%attr(0644,root,root) %{_sysusersdir}/openssh-server.conf
 
 %files keycat
 %doc HOWTO.ssh-keycat
@@ -793,18 +798,29 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
-* Mon Jan 08 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34.3
-- rebuilt
-
-* Mon Jan 08 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34.2
+* Fri Jan 05 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38
 - Fix Terrapin attack
-  Resolves: RHEL-19764
+  Resolves: CVE-2023-48795
 
-* Thu Dec 21 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34.1
-- Fix Terrapin attack (CVE-2023-48795)
-  Resolves: RHEL-19764
-- Forbid shell metasymbols in username/hostname (CVE-2023-51385)
-  Resolves: RHEL-19822
+* Fri Jan 05 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-37
+- Fix Terrapin attack
+  Resolves: CVE-2023-48795
+
+* Wed Dec 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-36
+- Fix Terrapin attack
+  Resolves: CVE-2023-48795
+- Relax OpenSSH build-time checks for OpenSSL version
+  Related: RHEL-4734
+- Forbid shell metasymbols in username/hostname
+  Resolves: CVE-2023-51385
+
+* Mon Oct 23 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-35
+- Relax OpenSSH checks for OpenSSL version
+  Resolves: RHEL-4734
+- Limit artificial delays in sshd while login using AD user
+  Resolves: RHEL-2469
+- Move users/groups creation logic to sysusers.d fragments
+  Resolves: RHEL-5222
 
 * Thu Jul 20 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-34
 - Avoid remote code execution in ssh-agent PKCS#11 support

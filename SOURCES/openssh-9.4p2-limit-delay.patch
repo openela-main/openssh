@@ -1,0 +1,33 @@
+diff -u -p -r1.166 auth2.c
+--- a/auth2.c	8 Mar 2023 04:43:12 -0000	1.166
++++ b/auth2.c	28 Aug 2023 08:32:44 -0000
+@@ -208,6 +208,7 @@ input_service_request(int type, u_int32_
+ }
+ 
+ #define MIN_FAIL_DELAY_SECONDS 0.005
++#define MAX_FAIL_DELAY_SECONDS 5.0
+ static double
+ user_specific_delay(const char *user)
+ {
+@@ -233,6 +234,12 @@ ensure_minimum_time_since(double start, 
+ 	struct timespec ts;
+ 	double elapsed = monotime_double() - start, req = seconds, remain;
+ 
++	if (elapsed > MAX_FAIL_DELAY_SECONDS) {
++		debug3_f("elapsed %0.3lfms exceeded the max delay "
++		    "requested %0.3lfms)", elapsed*1000, req*1000);
++		return;
++	}
++
+ 	/* if we've already passed the requested time, scale up */
+ 	while ((remain = seconds - elapsed) < 0.0)
+ 		seconds *= 2;
+@@ -317,7 +324,7 @@ input_userauth_request(int type, u_int32
+ 		debug2("input_userauth_request: try method %s", method);
+ 		authenticated =	m->userauth(ssh);
+ 	}
+-	if (!authctxt->authenticated)
++	if (!authctxt->authenticated && strcmp(method, "none") != 0)
+ 		ensure_minimum_time_since(tstart,
+ 		    user_specific_delay(authctxt->user));
+ 	userauth_finish(ssh, authenticated, method, NULL);

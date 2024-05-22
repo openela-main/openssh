@@ -471,12 +471,53 @@ diff -up openssh-7.9p1/sshkey.c.fips openssh-7.9p1/sshkey.c
  
  #include "xmss_fast.h"
  
+@@ -392,7 +394,8 @@ sshkey_calculate_signature(EVP_PKEY *pkey
+ {
+ 	EVP_MD_CTX *ctx = NULL;
+ 	u_char *sig = NULL;
+-	int ret, slen, len;
++	int ret, slen;
++	size_t len;
+ 
+ 	if (sigp == NULL || lenp == NULL) {
+ 		return SSH_ERR_INVALID_ARGUMENT;
+@@ -411,9 +414,10 @@ sshkey_calculate_signature(EVP_PKEY *pkey
+ 		ret = SSH_ERR_ALLOC_FAIL;
+ 		goto error;
+ 	}
+-	if (EVP_SignInit_ex(ctx, ssh_digest_to_md(hash_alg), NULL) <= 0 ||
+-	    EVP_SignUpdate(ctx, data, datalen) <= 0 ||
+-	    EVP_SignFinal(ctx, sig, &len, pkey) <= 0) {
++	if (EVP_DigestSignInit(ctx, NULL, ssh_digest_to_md(hash_alg),
++	        NULL, pkey) != 1 ||
++	    EVP_DigestSignUpdate(ctx, data, datalen) != 1 ||
++	    EVP_DigestSignFinal(ctx, sig, &len) != 1) {
+ 		ret = SSH_ERR_LIBCRYPTO_ERROR;
+ 		goto error;
+ 	}
+@@ -440,12 +444,13 @@ sshkey_verify_signature(EVP_PKEY *pkey
+ 	if ((ctx = EVP_MD_CTX_new()) == NULL) {
+ 		return SSH_ERR_ALLOC_FAIL;
+ 	}
+-	if (EVP_VerifyInit_ex(ctx, ssh_digest_to_md(hash_alg), NULL) <= 0 ||
+-	    EVP_VerifyUpdate(ctx, data, datalen) <= 0) {
++	if (EVP_DigestVerifyInit(ctx, NULL, ssh_digest_to_md(hash_alg),
++	    NULL, pkey) != 1 ||
++	    EVP_DigestVerifyUpdate(ctx, data, datalen) != 1) {
+ 		ret = SSH_ERR_LIBCRYPTO_ERROR;
+ 		goto done;
+ 	}
+-	ret = EVP_VerifyFinal(ctx, sigbuf, siglen, pkey);
++	ret = EVP_DigestVerifyFinal(ctx, sigbuf, siglen);
+ 	switch (ret) {
+ 	case 1:
+ 		ret = 0;
 @@ -1514,6 +1516,8 @@ rsa_generate_private_key(u_int bits, RSA
  	}
  	if (!BN_set_word(f4, RSA_F4) ||
  	    !RSA_generate_key_ex(private, bits, f4, NULL)) {
-+			if (FIPS_mode())
-+				logit("%s: the key length might be unsupported by FIPS mode approved key generation method", __func__);
++		if (FIPS_mode())
++			logit("%s: the key length might be unsupported by FIPS mode approved key generation method", __func__);
  		ret = SSH_ERR_LIBCRYPTO_ERROR;
  		goto out;
  	}
@@ -515,3 +556,14 @@ diff -up openssh-7.9p1/ssh-keygen.c.fips openssh-7.9p1/ssh-keygen.c
  		if ((fd = mkstemp(prv_tmp)) == -1) {
  			error("Could not save your public key in %s: %s",
  			    prv_tmp, strerror(errno));
+diff -up openssh-8.0p1/sshd_config.xxx openssh-8.0p1/sshd_config
+--- openssh-8.0p1/sshd_config.xxx	2023-10-30 13:01:59.150952364 +0100
++++ openssh-8.0p1/sshd_config	2023-10-30 13:02:56.662231354 +0100
+@@ -21,6 +21,7 @@
+ 
+ HostKey /etc/ssh/ssh_host_rsa_key
+ HostKey /etc/ssh/ssh_host_ecdsa_key
++#In FIPS mode Ed25519 keys are not supported, please comment out the next line
+ HostKey /etc/ssh/ssh_host_ed25519_key
+ 
+ # Ciphers and keying

@@ -1,0 +1,13 @@
+diff --git a/msg.c b/msg.c
+index 99c25cd2..574a566e 100644
+--- a/msg.c
++++ b/msg.c
+@@ -77,7 +77,7 @@ ssh_msg_recv(int fd, struct sshbuf *m)
+ 		return (-1);
+ 	}
+ 	msg_len = get_u32(buf);
+-	if (msg_len > 256 * 1024) {
++	if (msg_len > sshbuf_max_size(m)) {
+ 		error("ssh_msg_recv: read: bad msg_len %u", msg_len);
+ 		return (-1);
+ 	}

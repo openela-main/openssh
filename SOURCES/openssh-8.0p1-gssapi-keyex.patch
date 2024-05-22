@@ -1509,7 +1509,7 @@ new file mode 100644
 index 00000000..0b2f6a56
 --- /dev/null
 +++ b/kexgssc.c
-@@ -0,0 +1,595 @@
+@@ -0,0 +1,618 @@
 +/*
 + * Copyright (c) 2001-2009 Simon Wilkinson. All rights reserved.
 + *
@@ -1571,7 +1571,7 @@ index 00000000..0b2f6a56
 +	struct sshbuf *server_blob = NULL;
 +	struct sshbuf *shared_secret = NULL;
 +	struct sshbuf *server_host_key_blob = NULL;
-+	struct sshbuf *empty = sshbuf_new();
++	struct sshbuf *empty = NULL;
 +	u_char *msg;
 +	int type = 0;
 +	int first = 1;
@@ -1610,8 +1610,10 @@ index 00000000..0b2f6a56
 +	default:
 +		fatal("%s: Unexpected KEX type %d", __func__, kex->kex_type);
 +	}
-+	if (r != 0)
++	if (r != 0) {
++		ssh_gssapi_delete_ctx(&ctxt);
 +		return r;
++	}
 +
 +	token_ptr = GSS_C_NO_BUFFER;
 +
@@ -1674,11 +1676,16 @@ index 00000000..0b2f6a56
 +			do {
 +				type = ssh_packet_read(ssh);
 +				if (type == SSH2_MSG_KEXGSS_HOSTKEY) {
++					char *tmp = NULL;
++					size_t tmp_len = 0;
++
 +					debug("Received KEXGSS_HOSTKEY");
 +					if (server_host_key_blob)
 +						fatal("Server host key received more than once");
-+					if ((r = sshpkt_getb_froms(ssh, &server_host_key_blob)) != 0)
++					if ((r = sshpkt_get_string(ssh, &tmp, &tmp_len)) != 0)
 +						fatal("Failed to read server host key: %s", ssh_err(r));
++					if ((server_host_key_blob = sshbuf_from(tmp, tmp_len)) == NULL)
++						fatal("sshbuf_from failed");
 +				}
 +			} while (type == SSH2_MSG_KEXGSS_HOSTKEY);
 +
@@ -1779,6 +1786,11 @@ index 00000000..0b2f6a56
 +	if (r != 0)
 +		goto out;
 +
++	if ((empty = sshbuf_new()) == NULL) {
++		r = SSH_ERR_ALLOC_FAIL;
++		goto out;
++	}
++
 +	hashlen = sizeof(hash);
 +	if ((r = kex_gen_hash(
 +	    kex->hash_alg,
@@ -1848,7 +1860,7 @@ index 00000000..0b2f6a56
 +	size_t hashlen;
 +	const BIGNUM *pub_key, *dh_p, *dh_g;
 +	int nbits = 0, min = DH_GRP_MIN, max = DH_GRP_MAX;
-+	struct sshbuf *empty = sshbuf_new();
++	struct sshbuf *empty = NULL;
 +	u_char c;
 +	int r;
 +
@@ -1960,11 +1972,16 @@ index 00000000..0b2f6a56
 +			do {
 +				type = ssh_packet_read(ssh);
 +				if (type == SSH2_MSG_KEXGSS_HOSTKEY) {
++					char *tmp = NULL;
++					size_t tmp_len = 0;
++
 +					debug("Received KEXGSS_HOSTKEY");
 +					if (server_host_key_blob)
 +						fatal("Server host key received more than once");
-+					if ((r = sshpkt_getb_froms(ssh, &server_host_key_blob)) != 0)
++					if ((r = sshpkt_get_string(ssh, &tmp, &tmp_len)) != 0)
 +						fatal("sshpkt failed: %s", ssh_err(r));
++					if ((server_host_key_blob = sshbuf_from(tmp, tmp_len)) == NULL)
++						fatal("sshbuf_from failed");
 +				}
 +			} while (type == SSH2_MSG_KEXGSS_HOSTKEY);
 +
@@ -2040,6 +2057,7 @@ index 00000000..0b2f6a56
 +	    (r = sshbuf_get_bignum2(buf, &dh_server_pub)) != 0)
 +		goto out;
 +	sshbuf_free(buf);
++	buf = NULL;
 +
 +	if ((shared_secret = sshbuf_new()) == NULL) {
 +		r = SSH_ERR_ALLOC_FAIL;
@@ -2048,6 +2066,10 @@ index 00000000..0b2f6a56
 +
 +	if ((r = kex_dh_compute_key(kex, dh_server_pub, shared_secret)) != 0)
 +		goto out;
++	if ((empty = sshbuf_new()) == NULL) {
++		r = SSH_ERR_ALLOC_FAIL;
++		goto out;
++	}
 +
 +	DH_get0_pqg(kex->dh, &dh_p, NULL, &dh_g);
 +	hashlen = sizeof(hash);
@@ -2094,6 +2116,7 @@ index 00000000..0b2f6a56
 +	if ((r = kex_derive_keys(ssh, hash, hashlen, shared_secret)) == 0)
 +		r = kex_send_newkeys(ssh);
 +out:
++	sshbuf_free(buf);
 +	sshbuf_free(server_blob);
 +	sshbuf_free(empty);
 +	explicit_bzero(hash, sizeof(hash));
@@ -2110,7 +2133,7 @@ new file mode 100644
 index 00000000..60bc02de
 --- /dev/null
 +++ b/kexgsss.c
-@@ -0,0 +1,474 @@
+@@ -0,0 +1,482 @@
 +/*
 + * Copyright (c) 2001-2009 Simon Wilkinson. All rights reserved.
 + *
@@ -2177,7 +2200,7 @@ index 00000000..60bc02de
 +	 */
 +
 +	OM_uint32 ret_flags = 0;
-+	gss_buffer_desc gssbuf, recv_tok, msg_tok;
++	gss_buffer_desc gssbuf = {0, NULL}, recv_tok, msg_tok;
 +	gss_buffer_desc send_tok = GSS_C_EMPTY_BUFFER;
 +	Gssctxt *ctxt = NULL;
 +	struct sshbuf *shared_secret = NULL;
@@ -2217,7 +2240,7 @@ index 00000000..60bc02de
 +		type = ssh_packet_read(ssh);
 +		switch(type) {
 +		case SSH2_MSG_KEXGSS_INIT:
-+			if (client_pubkey != NULL)
++			if (gssbuf.value != NULL)
 +				fatal("Received KEXGSS_INIT after initialising");
 +			if ((r = ssh_gssapi_sshpkt_get_buffer_desc(ssh,
 +			        &recv_tok)) != 0 ||
@@ -2248,6 +2271,31 @@ index 00000000..60bc02de
 +				goto out;
 +
 +			/* Send SSH_MSG_KEXGSS_HOSTKEY here, if we want */
++
++			/* Calculate the hash early so we can free the
++			* client_pubkey, which has reference to the parent
++			* buffer state->incoming_packet
++			*/
++			hashlen = sizeof(hash);
++			if ((r = kex_gen_hash(
++			    kex->hash_alg,
++			    kex->client_version,
++			    kex->server_version,
++			    kex->peer,
++			    kex->my,
++			    empty,
++			    client_pubkey,
++			    server_pubkey,
++			    shared_secret,
++			    hash, &hashlen)) != 0)
++				goto out;
++
++			gssbuf.value = hash;
++			gssbuf.length = hashlen;
++
++			sshbuf_free(client_pubkey);
++			client_pubkey = NULL;
++
 +			break;
 +		case SSH2_MSG_KEXGSS_CONTINUE:
 +			if ((r = ssh_gssapi_sshpkt_get_buffer_desc(ssh,
@@ -2269,7 +2317,7 @@ index 00000000..60bc02de
 +		if (maj_status != GSS_S_COMPLETE && send_tok.length == 0)
 +			fatal("Zero length token output when incomplete");
 +
-+		if (client_pubkey == NULL)
++		if (gssbuf.value == NULL)
 +			fatal("No client public key");
 +
 +		if (maj_status & GSS_S_CONTINUE_NEEDED) {
@@ -2297,23 +2345,6 @@ index 00000000..60bc02de
 +
 +	if (!(ret_flags & GSS_C_INTEG_FLAG))
 +		fatal("Integrity flag wasn't set");
-+
-+	hashlen = sizeof(hash);
-+	if ((r = kex_gen_hash(
-+	    kex->hash_alg,
-+	    kex->client_version,
-+	    kex->server_version,
-+	    kex->peer,
-+	    kex->my,
-+	    empty,
-+	    client_pubkey,
-+	    server_pubkey,
-+	    shared_secret,
-+	    hash, &hashlen)) != 0)
-+		goto out;
-+
-+	gssbuf.value = hash;
-+	gssbuf.length = hashlen;
 +
 +	if (GSS_ERROR(PRIVSEP(ssh_gssapi_sign(ctxt, &gssbuf, &msg_tok))))
 +		fatal("Couldn't get MIC");

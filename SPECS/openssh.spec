@@ -66,14 +66,14 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.0p1
-%global openssh_rel 19
+%global openssh_rel 24
 %global pam_ssh_agent_ver 0.10.3
 %global pam_ssh_agent_rel 7
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}%{?rescue_rel}.2
+Release: %{openssh_rel}%{?dist}%{?rescue_rel}
 URL: http://www.openssh.com/portable.html
 #URL1: http://pamsshagentauth.sourceforge.net
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
@@ -277,13 +277,21 @@ Patch985: openssh-8.7p1-minimize-sha1-use.patch
 Patch986: openssh-9.1p1-sshbanner.patch
 # Upstream 25e3bccbaa63d27b9d5e09c123f1eb28594d2bd6
 Patch987: openssh-8.0p1-ipv6-process.patch
+# Upstream 4332b4fe49360679647a8705bc08f4e81323f6b4
+Patch988: openssh-8.0p1-avoidkillall.patch
+# Upstream 89b54900ac61986760452f132bbe3fb7249cfdac
+Patch989: openssh-8.0p1-bigsshdconfig.patch
 # upsream commit
 # b23fe83f06ee7e721033769cfa03ae840476d280
 Patch1015: openssh-9.3p1-upstream-cve-2023-38408.patch
+#upstream commit 01dbf3d46651b7d6ddf5e45d233839bbfffaeaec
+Patch1017: openssh-9.4p2-limit-delay.patch
 #upstream commit 1edb00c58f8a6875fad6a497aa2bacf37f9e6cd5
 Patch1018: openssh-9.6p1-CVE-2023-48795.patch
 #upstream commit 7ef3787c84b6b524501211b11a26c742f829af1a
 Patch1019: openssh-9.6p1-CVE-2023-51385.patch
+# SCP kill switch
+Patch1020: openssh-8.7p1-scp-kill-switch.patch
 
 License: BSD
 Group: Applications/Internet
@@ -376,7 +384,7 @@ Requires: openssh = %{version}-%{release}
 Summary: PAM module for authentication with ssh-agent
 Group: System Environment/Base
 Version: %{pam_ssh_agent_ver}
-Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}%{?rescue_rel}.2
+Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}%{?rescue_rel}
 License: BSD
 
 %description
@@ -517,6 +525,8 @@ popd
 %patch985 -p1 -b .minimize-sha1-use
 %patch986 -p1 -b .banner
 %patch987 -p1 -b .sftp_ipv6
+%patch988 -p1 -b .killall
+%patch989 -p1 -b .bigsshdconfig
 
 %patch200 -p1 -b .audit
 %patch201 -p1 -b .audit-race
@@ -525,8 +535,10 @@ popd
 %patch100 -p1 -b .coverity
 
 %patch1015 -p1 -b .cve-2023-38408
+%patch1017 -p1 -b .limitdelay
 %patch1018 -p1 -b .cve-2023-48795
 %patch1019 -p1 -b .cve-2023-51385
+%patch1020 -p1 -b .scp-kill-switch
 
 autoreconf
 pushd pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -812,15 +824,37 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
-* Mon Jan 08 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-19.2
-- Fix Terrapin attack
-  Resolves: RHEL-19762
+* Tue Feb 06 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-24
+- Providing a kill switch for scp to deal with CVE-2020-15778
+  Resolves: RHEL-22870
 
-* Thu Dec 21 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-19.1
+* Fri Jan 05 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-23
 - Fix Terrapin attack
-  Resolves: RHEL-19762
+  Resolves: RHEL-19308
+
+* Thu Dec 21 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-22
+- Fix Terrapin attack
+  Resolves: RHEL-19308
 - Forbid shell metasymbols in username/hostname
-  Resolves: RHEL-19820
+  Resolves: RHEL-19788
+
+* Tue Nov 07 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-21
+- Using DigestSign/DigestVerify functions for better FIPS compatibility
+  Resolves: RHEL-5217
+
+* Mon Oct 30 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-20
+- Limit artificial delays in sshd while login using AD user
+  Resolves: RHEL-1684
+- Add comment to OpenSSH server config about FIPS-incompatible key
+  Resolves: RHEL-5221
+- Avoid killing all processes on system in case of race condition
+  Resolves: RHEL-11548
+- Avoid sshd_config 256K limit
+  Resolves: RHEL-5279
+- Using DigestSign/DigestVerify functions for better FIPS compatibility
+  Resolves: RHEL-5217
+- Fix GSS KEX causing ssh failures when connecting to WinSSHD
+  Resolves: RHEL-5321
 
 * Thu Aug 24 2023 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-19
 - rebuilt

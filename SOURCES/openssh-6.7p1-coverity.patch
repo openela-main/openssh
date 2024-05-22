@@ -136,18 +136,6 @@ diff -up openssh-7.4p1/serverloop.c.coverity openssh-7.4p1/serverloop.c
  		if (tun != SSH_TUNID_ANY &&
  		    auth_opts->force_tun_device != (int)tun)
  			goto done;
-diff -up openssh-7.4p1/sftp.c.coverity openssh-7.4p1/sftp.c
---- openssh-7.4p1/sftp.c.coverity	2016-12-19 05:59:41.000000000 +0100
-+++ openssh-7.4p1/sftp.c	2016-12-23 16:40:26.903788691 +0100
-@@ -224,7 +224,7 @@ killchild(int signo)
- {
- 	if (sshpid > 1) {
- 		kill(sshpid, SIGTERM);
--		waitpid(sshpid, NULL, 0);
-+		(void) waitpid(sshpid, NULL, 0);
- 	}
- 
- 	_exit(1);
 diff -up openssh-7.4p1/ssh-agent.c.coverity openssh-7.4p1/ssh-agent.c
 --- openssh-7.4p1/ssh-agent.c.coverity	2016-12-19 05:59:41.000000000 +0100
 +++ openssh-7.4p1/ssh-agent.c	2016-12-23 16:40:26.903788691 +0100

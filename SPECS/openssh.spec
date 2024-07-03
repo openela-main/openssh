@@ -54,7 +54,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}
+Release: %{openssh_rel}%{?dist}.1
 URL: http://www.openssh.com/portable.html
 #URL1: https://github.com/jbeverly/pam_ssh_agent_auth/
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
@@ -288,6 +288,7 @@ Patch1017: openssh-9.4p2-limit-delay.patch
 Patch1018: openssh-9.6p1-CVE-2023-48795.patch
 #upstream commit 7ef3787c84b6b524501211b11a26c742f829af1a
 Patch1019: openssh-9.6p1-CVE-2023-51385.patch
+Patch1020: openssh-9.8p1-upstream-cve-2024-6387.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -362,7 +363,7 @@ Requires: openssh = %{version}-%{release}
 %package -n pam_ssh_agent_auth
 Summary: PAM module for authentication with ssh-agent
 Version: %{pam_ssh_agent_ver}
-Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}
+Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}.1
 License: BSD
 
 %description
@@ -511,6 +512,7 @@ popd
 %patch1017 -p1 -b .limitdelay
 %patch1018 -p1 -b .cve-2023-48795
 %patch1019 -p1 -b .cve-2023-51385
+%patch1020 -p1 -b .cve-2024-6387
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -798,6 +800,10 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Fri Jun 28 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.1
+- Possible remote code execution due to a race condition (CVE-2024-6387)
+  Resolves: RHEL-45347
+
 * Fri Jan 05 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38
 - Fix Terrapin attack
   Resolves: CVE-2023-48795

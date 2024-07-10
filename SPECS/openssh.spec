@@ -54,7 +54,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}.1
+Release: %{openssh_rel}%{?dist}.4
 URL: http://www.openssh.com/portable.html
 #URL1: https://github.com/jbeverly/pam_ssh_agent_auth/
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
@@ -363,7 +363,7 @@ Requires: openssh = %{version}-%{release}
 %package -n pam_ssh_agent_auth
 Summary: PAM module for authentication with ssh-agent
 Version: %{pam_ssh_agent_ver}
-Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}.1
+Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}.4
 License: BSD
 
 %description
@@ -800,6 +800,16 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Wed Jul 03 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.4
+- rebuilt
+
+* Wed Jul 03 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.3
+- rebuilt
+
+* Mon Jul 01 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.2
+- Possible remote code execution due to a race condition (CVE-2024-6409)
+  Resolves: RHEL-45740
+
 * Fri Jun 28 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.1
 - Possible remote code execution due to a race condition (CVE-2024-6387)
   Resolves: RHEL-45347

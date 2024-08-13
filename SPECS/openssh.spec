@@ -66,7 +66,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.0p1
-%global openssh_rel 24
+%global openssh_rel 25
 %global pam_ssh_agent_ver 0.10.3
 %global pam_ssh_agent_rel 7
 
@@ -292,6 +292,8 @@ Patch1018: openssh-9.6p1-CVE-2023-48795.patch
 Patch1019: openssh-9.6p1-CVE-2023-51385.patch
 # SCP kill switch
 Patch1020: openssh-8.7p1-scp-kill-switch.patch
+#upstream commit 96faa0de6c673a2ce84736eba37fc9fb723d9e5c
+Patch1021: openssh-8.0p1-upstream-ignore-SIGPIPE.patch
 
 License: BSD
 Group: Applications/Internet
@@ -539,6 +541,7 @@ popd
 %patch1018 -p1 -b .cve-2023-48795
 %patch1019 -p1 -b .cve-2023-51385
 %patch1020 -p1 -b .scp-kill-switch
+%patch1021 -p1 -b .ignore-SIGPIPE
 
 autoreconf
 pushd pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -824,6 +827,10 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
+* Tue Jun 25 2024 Stepan Broz <sbroz@redhat.com> - 8.0p1-25
+- Upstream: Ignore SIGPIPE earlier in main()
+  Resolves: RHEL-37743
+
 * Tue Feb 06 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-24
 - Providing a kill switch for scp to deal with CVE-2020-15778
   Resolves: RHEL-22870

@@ -47,14 +47,14 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.7p1
-%global openssh_rel 38
+%global openssh_rel 43
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 5
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}.4
+Release: %{openssh_rel}%{?dist}
 URL: http://www.openssh.com/portable.html
 #URL1: https://github.com/jbeverly/pam_ssh_agent_auth/
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
@@ -84,6 +84,8 @@ Patch100: openssh-6.7p1-coverity.patch
 Patch200: openssh-7.6p1-audit.patch
 # Audit race condition in forked child (#1310684)
 Patch201: openssh-7.1p2-audit-race-condition.patch
+# Correctly audit hostname and IP address
+Patch202: openssh-8.7p1-audit-hostname.patch
 
 # --- pam_ssh-agent ---
 # make it build reusing the openssh sources
@@ -288,7 +290,9 @@ Patch1017: openssh-9.4p2-limit-delay.patch
 Patch1018: openssh-9.6p1-CVE-2023-48795.patch
 #upstream commit 7ef3787c84b6b524501211b11a26c742f829af1a
 Patch1019: openssh-9.6p1-CVE-2023-51385.patch
-Patch1020: openssh-9.8p1-upstream-cve-2024-6387.patch
+#upstream commit 96faa0de6c673a2ce84736eba37fc9fb723d9e5c
+Patch1020: openssh-8.7p1-sigpipe.patch
+Patch1021: openssh-9.8p1-upstream-cve-2024-6387.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -363,7 +367,7 @@ Requires: openssh = %{version}-%{release}
 %package -n pam_ssh_agent_auth
 Summary: PAM module for authentication with ssh-agent
 Version: %{pam_ssh_agent_ver}
-Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}.4
+Release: %{pam_ssh_agent_rel}.%{openssh_rel}%{?dist}
 License: BSD
 
 %description
@@ -485,6 +489,7 @@ popd
 
 %patch200 -p1 -b .audit
 %patch201 -p1 -b .audit-race
+%patch202 -p1 -b .audit-hostname
 %patch700 -p1 -b .fips
 
 %patch1000 -p1 -b .minimize-sha1-use
@@ -512,7 +517,8 @@ popd
 %patch1017 -p1 -b .limitdelay
 %patch1018 -p1 -b .cve-2023-48795
 %patch1019 -p1 -b .cve-2023-51385
-%patch1020 -p1 -b .cve-2024-6387
+%patch1020 -p1 -b .earlypipe
+%patch1021 -p1 -b .cve-2024-6387
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -800,19 +806,27 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
-* Wed Jul 03 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.4
-- rebuilt
-
-* Wed Jul 03 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.3
-- rebuilt
-
-* Mon Jul 01 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.2
+* Tue Jul 09 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-43
 - Possible remote code execution due to a race condition (CVE-2024-6409)
-  Resolves: RHEL-45740
+  Resolves: RHEL-45741
 
-* Fri Jun 28 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38.1
+* Thu Jul 04 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-42
 - Possible remote code execution due to a race condition (CVE-2024-6387)
-  Resolves: RHEL-45347
+  Resolves: RHEL-45348
+
+* Mon Jun 03 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-41
+- Fix ssh multiplexing connect timeout processing
+  Resolves: RHEL-37748
+
+* Thu May 02 2024 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-40
+- Correctly audit hostname and IP address
+  Resolves: RHEL-22316
+- Make default key sizes configurable in sshd-keygen
+  Resolves: RHEL-26454
+
+* Wed Apr 24 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-39
+- Use FIPS-compatible API for key derivation
+  Resolves: RHEL-32809
 
 * Fri Jan 05 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-38
 - Fix Terrapin attack

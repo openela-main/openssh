@@ -81,7 +81,7 @@ diff -up openssh-8.6p1/kex.c.fips openssh-8.6p1/kex.c
  #include <openssl/crypto.h>
 +#include <openssl/fips.h>
  #include <openssl/dh.h>
- # ifdef HAVE_EVP_KDF_CTX_NEW_ID
+ # ifdef HAVE_EVP_KDF_CTX_NEW
  # include <openssl/kdf.h>
 @@ -203,7 +203,10 @@ kex_names_valid(const char *names)
  	for ((p = strsep(&cp, ",")); p && *p != '\0';

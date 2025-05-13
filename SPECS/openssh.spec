@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.7p1
-%global openssh_rel 43
+%global openssh_rel 45
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 5
 
@@ -293,6 +293,13 @@ Patch1019: openssh-9.6p1-CVE-2023-51385.patch
 #upstream commit 96faa0de6c673a2ce84736eba37fc9fb723d9e5c
 Patch1020: openssh-8.7p1-sigpipe.patch
 Patch1021: openssh-9.8p1-upstream-cve-2024-6387.patch
+Patch1022: openssh-8.7p1-redhat-help.patch
+Patch1023: openssh-8.7p1-openssl-log.patch
+#upstream commit 52dfe3c72d98503d8b7c6f64fc7e19d685636c0b
+Patch1024: openssh-8.7p1-allow-duplicate-subsystem.patch
+# upstream 6ce00f0c2ecbb9f75023dbe627ee6460bcec78c2
+# upstream 0832aac79517611dd4de93ad0a83577994d9c907
+Patch1025: openssh-9.9p2-error_processing.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -519,6 +526,10 @@ popd
 %patch1019 -p1 -b .cve-2023-51385
 %patch1020 -p1 -b .earlypipe
 %patch1021 -p1 -b .cve-2024-6387
+%patch1022 -p1 -b .redhat-help
+%patch1023 -p1 -b .openssl-log
+%patch1024 -p1 -b .allow-dup-subsystem
+%patch1025 -p1 -b .errcode_set
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -806,6 +817,20 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Tue Feb 18 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-45
+- Fix missing error codes set and invalid error code checks in OpenSSH. It
+  prevents memory exhaustion attack and a MITM attack when VerifyHostKeyDNS
+  is on (CVE-2025-26465).
+  Resolves: RHEL-78700
+
+* Mon Oct 21 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-44
+- Add extra help information on ssh early failure
+  Resolves: RHEL-33809
+- Provide details on crypto error instead of "error in libcrypto"
+  Resolves: RHEL-52293
+- Allow duplicate Subsystem directive
+  Resolves: RHEL-47112
+
 * Tue Jul 09 2024 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-43
 - Possible remote code execution due to a race condition (CVE-2024-6409)
   Resolves: RHEL-45741

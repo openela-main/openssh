@@ -1,0 +1,65 @@
+diff -up openssh-8.7p1/log.c.xxx openssh-8.7p1/log.c
+--- openssh-8.7p1/log.c.xxx	2024-10-18 13:00:56.419560563 +0200
++++ openssh-8.7p1/log.c	2024-10-18 13:22:35.954819016 +0200
+@@ -438,6 +438,26 @@ sshlog(const char *file, const char *fun
+ 	va_end(args);
+ }
+ 
++#ifdef WITH_OPENSSL
++static int
++openssl_error_print_cb(const char *str, size_t len, void *u)
++{
++	sshlogdirect(SYSLOG_LEVEL_DEBUG1, 0, "openssl error %s", str);
++	return 0;
++}
++#endif
++
++void
++sshlog_openssl(int r)
++{
++#ifdef WITH_OPENSSL
++	if (r != SSH_ERR_LIBCRYPTO_ERROR) return;
++
++	ERR_print_errors_cb(openssl_error_print_cb, NULL);
++#endif
++	return;
++}
++
+ void
+ sshlogdie(const char *file, const char *func, int line, int showfunc,
+     LogLevel level, const char *suffix, const char *fmt, ...)
+diff -up openssh-8.7p1/log.h.xxx openssh-8.7p1/log.h
+--- openssh-8.7p1/log.h.xxx	2024-10-18 12:56:18.944971946 +0200
++++ openssh-8.7p1/log.h	2024-10-18 13:03:38.324351416 +0200
+@@ -71,6 +71,7 @@ void	 cleanup_exit(int) __attribute__((n
+ void	 sshlog(const char *, const char *, int, int,
+     LogLevel, const char *, const char *, ...)
+     __attribute__((format(printf, 7, 8)));
++void	 sshlog_openssl(int);
+ void	 sshlogv(const char *, const char *, int, int,
+     LogLevel, const char *, const char *, va_list);
+ void	 sshsigdie(const char *, const char *, int, int,
+diff -up openssh-8.7p1/auth2-pubkey.c.yyy openssh-8.7p1/auth2-pubkey.c
+--- openssh-8.7p1/auth2-pubkey.c.yyy	2024-10-18 13:27:00.709055845 +0200
++++ openssh-8.7p1/auth2-pubkey.c	2024-10-18 13:27:31.638784460 +0200
+@@ -131,6 +131,7 @@ userauth_pubkey(struct ssh *ssh)
+ 		goto done;
+ 	}
+ 	if ((r = sshkey_from_blob(pkblob, blen, &key)) != 0) {
++		sshlog_openssl(r);
+ 		error_fr(r, "parse key");
+ 		goto done;
+ 	}
+diff -up openssh-8.7p1/dispatch.c.yyy openssh-8.7p1/dispatch.c
+--- openssh-8.7p1/dispatch.c.yyy	2024-10-18 13:27:56.349366570 +0200
++++ openssh-8.7p1/dispatch.c	2024-10-18 13:28:17.921874757 +0200
+@@ -130,6 +130,8 @@ ssh_dispatch_run_fatal(struct ssh *ssh,
+ {
+ 	int r;
+ 
+-	if ((r = ssh_dispatch_run(ssh, mode, done)) != 0)
++	if ((r = ssh_dispatch_run(ssh, mode, done)) != 0) {
++		sshlog_openssl(r);
+ 		sshpkt_fatal(ssh, r, "%s", __func__);
++	}
+ }

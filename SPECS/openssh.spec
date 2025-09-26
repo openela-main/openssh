@@ -66,7 +66,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.0p1
-%global openssh_rel 25
+%global openssh_rel 26
 %global pam_ssh_agent_ver 0.10.3
 %global pam_ssh_agent_rel 7
 
@@ -294,6 +294,8 @@ Patch1019: openssh-9.6p1-CVE-2023-51385.patch
 Patch1020: openssh-8.7p1-scp-kill-switch.patch
 #upstream commit 96faa0de6c673a2ce84736eba37fc9fb723d9e5c
 Patch1021: openssh-8.0p1-upstream-ignore-SIGPIPE.patch
+#upstream commit 0832aac79517611dd4de93ad0a83577994d9c907
+Patch1022: openssh-8.0p1-CVE-2025-26465.patch
 
 License: BSD
 Group: Applications/Internet
@@ -542,6 +544,7 @@ popd
 %patch1019 -p1 -b .cve-2023-51385
 %patch1020 -p1 -b .scp-kill-switch
 %patch1021 -p1 -b .ignore-SIGPIPE
+%patch1022 -p2 -b .cve-2025-26465
 
 autoreconf
 pushd pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -827,6 +830,11 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
+* Wed Aug 20 2025 Antonio Vieiro <avieirov@redhat.com> - 8.0p1-26
+- Fix missing invalid error code checks in OpenSSH. It prevents
+  a MITM attack when VerifyHostKeyDNS is on (CVE-2025-26465)
+  Resolves: RHEL-109228
+
 * Tue Jun 25 2024 Stepan Broz <sbroz@redhat.com> - 8.0p1-25
 - Upstream: Ignore SIGPIPE earlier in main()
   Resolves: RHEL-37743

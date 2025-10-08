@@ -1,0 +1,40 @@
+diff -up openssh-8.7p1/ssh.c.xxx openssh-8.7p1/ssh.c
+--- openssh-8.7p1/ssh.c.xxx	2024-09-11 14:24:06.711088878 +0200
++++ openssh-8.7p1/ssh.c	2024-09-11 14:35:12.883765718 +0200
+@@ -175,6 +175,16 @@ extern int muxserver_sock;
+ extern u_int muxclient_command;
+ 
+ /* Prints a help message to the user.  This function never returns. */
++static void
++redhat_usage(void)
++{
++    if(isatty(fileno(stderr))) {
++	fprintf(stderr,
++"\nYou can find some explanations for typical errors at this link:\n"
++"	    https://red.ht/support_rhel_ssh\n"
++	);
++    }
++}
+ 
+ static void
+ usage(void)
+@@ -188,6 +196,7 @@ usage(void)
+ "           destination [command [argument ...]]\n"
+ "       ssh [-Q query_option]\n"
+ 	);
++	redhat_usage();
+ 	exit(255);
+ }
+ 
+@@ -1609,8 +1618,10 @@ main(int ac, char **av)
+ 	/* Open a connection to the remote host. */
+ 	if (ssh_connect(ssh, host, options.host_arg, addrs, &hostaddr,
+ 	    options.port, options.connection_attempts,
+-	    &timeout_ms, options.tcp_keep_alive) != 0)
++	    &timeout_ms, options.tcp_keep_alive) != 0) {
++		redhat_usage();
+ 		exit(255);
++	}
+ 
+ 	if (addrs != NULL)
+ 		freeaddrinfo(addrs);

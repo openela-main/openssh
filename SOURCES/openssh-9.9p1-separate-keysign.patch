@@ -1,0 +1,12 @@
+diff -up openssh-9.9p1/ssh_config.5.xxx openssh-9.9p1/ssh_config.5
+--- openssh-9.9p1/ssh_config.5.xxx	2024-10-11 12:01:14.260566303 +0200
++++ openssh-9.9p1/ssh_config.5	2024-10-11 12:01:59.725654775 +0200
+@@ -759,7 +759,7 @@ or
+ This option should be placed in the non-hostspecific section.
+ See
+ .Xr ssh-keysign 8
+-for more information.
++for more information. ssh-keysign should be installed explicitly.
+ .It Cm EscapeChar
+ Sets the escape character (default:
+ .Ql ~ ) .

@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.7p1
-%global openssh_rel 45
+%global openssh_rel 46
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 5
 
@@ -817,6 +817,10 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Mon Jul 21 2025 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-46
+- Move the redhat help message to debug1 log level
+  Resolves: RHEL-104580
+
 * Tue Feb 18 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.7p1-45
 - Fix missing error codes set and invalid error code checks in OpenSSH. It
   prevents memory exhaustion attack and a MITM attack when VerifyHostKeyDNS

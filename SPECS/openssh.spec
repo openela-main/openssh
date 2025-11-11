@@ -39,12 +39,11 @@
 %{?static_openssl:%global static_libcrypto 1}
 
 %global openssh_ver 9.9p1
-%global openssh_rel 7
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: %{openssh_rel}%{?dist}
+Release: 11%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -205,6 +204,16 @@ Patch1020: openssh-9.9p1-match-regression.patch
 # upstream 6ce00f0c2ecbb9f75023dbe627ee6460bcec78c2
 # upstream 0832aac79517611dd4de93ad0a83577994d9c907
 Patch1021: openssh-9.9p2-error_processing.patch
+# Downstream patch, OpenSSL based MLKEM implementation
+Patch1022: openssh-9.9p1-openssl-mlkem.patch
+# upstream 8eabd2ae2ca1d7756417a1ee5b41f09c5d997634
+Patch1023: openssh-9.9p1-compression-directive.patch
+# upstream fc86875e6acb36401dfc1dfb6b628a9d1460f367
+Patch1024: openssh-9.9p1-disable-forwarding.patch
+Patch1025: openssh-9.9p1-non-supported-keys-err-msg.patch
+Patch1026: openssh-9.9p1-bad-hostkey.patch
+# https://github.com/openssh/openssh-portable/pull/500
+Patch1027: openssh-9.9p1-support-authentication-indicators-in-GSSAPI.patch
 
 License: BSD-3-Clause AND BSD-2-Clause AND ISC AND SSH-OpenSSH AND ssh-keyscan AND sprintf AND LicenseRef-Fedora-Public-Domain AND X11-distribute-modifications-variant
 Requires: /sbin/nologin
@@ -391,6 +400,12 @@ gpgv2 --quiet --keyring %{SOURCE3} %{SOURCE1} %{SOURCE0}
 %patch -P 1019 -p1 -b .mlkembe
 %patch -P 1020 -p1 -b .match
 %patch -P 1021 -p1 -b .errcode_set
+%patch -P 1022 -p1 -b .openssl-mlkem
+%patch -P 1023 -p1 -b .compression
+%patch -P 1024 -p1 -b .disable-forwarding
+%patch -P 1025 -p1 -b .non-supported-keys-err-msg
+%patch -P 1026 -p1 -b .bad-hostkey
+%patch -P 1027 -p1 -b .gss-indicators
 
 %patch -P 100 -p1 -b .coverity
 
@@ -489,7 +504,8 @@ popd
 %endif
 
 %check
-OPENSSL_CONF=/dev/null %{SOURCE22} %{SOURCE23}  # ./parallel_tests.sh parallel_tests.Makefile
+%{SOURCE22} %{SOURCE23}  # ./parallel_tests.sh parallel_tests.Makefile
+#make tests
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -670,6 +686,30 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
+* Fri Jul 18 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-11
+- Move the redhat help message to debug1 log level
+  Resolves: RHEL-93957
+
+* Thu Jun 26 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-10
+- Support for authentication indicators in OpenSSH
+  Resolves: RHEL-40790
+
+* Tue Apr 29 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-9
+- CVE-2025-32728: Fix logic error in DisableForwarding option
+  Resolves: RHEL-86819
+- Provide better error for non-supported private keys
+  Resolves: RHEL-68124
+- Ignore bad hostkeys in known_hosts file
+  Resolves: RHEL-83644
+
+* Thu Mar 20 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-8
+- OpenSSH should not use its own implementation of MLKEM
+  Resolves: RHEL-58252
+- Correct processing of Compression directive
+  Resolves: RHEL-68346
+- Supress systemd warning
+  Resolves: RHEL-84816
+
 * Tue Feb 18 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-7
 - rebuilt
   Related: RHEL-78699

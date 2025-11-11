@@ -1,0 +1,13 @@
+diff --git a/readconf.c b/readconf.c
+index 9f559269..777739d6 100644
+--- a/readconf.c
++++ b/readconf.c
+@@ -3410,6 +3410,8 @@ fmt_intarg(OpCodes code, int val)
+ 	switch (code) {
+ 	case oAddressFamily:
+ 		return fmt_multistate_int(val, multistate_addressfamily);
++	case oCompression:
++		return fmt_multistate_int(val, multistate_compression);
+ 	case oVerifyHostKeyDNS:
+ 	case oUpdateHostkeys:
+ 		return fmt_multistate_int(val, multistate_yesnoask);

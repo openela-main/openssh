@@ -66,7 +66,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.0p1
-%global openssh_rel 26
+%global openssh_rel 27
 %global pam_ssh_agent_ver 0.10.3
 %global pam_ssh_agent_rel 7
 
@@ -296,6 +296,10 @@ Patch1020: openssh-8.7p1-scp-kill-switch.patch
 Patch1021: openssh-8.0p1-upstream-ignore-SIGPIPE.patch
 #upstream commit 0832aac79517611dd4de93ad0a83577994d9c907
 Patch1022: openssh-8.0p1-CVE-2025-26465.patch
+# upstream 35d5917652106aede47621bb3f64044604164043
+Patch1023: openssh-8.0p1-reject-cntrl-chars-in-username.patch
+# upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
+Patch1024: openssh-8.7p1-reject-null-char-in-url-string.patch
 
 License: BSD
 Group: Applications/Internet
@@ -545,6 +549,8 @@ popd
 %patch1020 -p1 -b .scp-kill-switch
 %patch1021 -p1 -b .ignore-SIGPIPE
 %patch1022 -p2 -b .cve-2025-26465
+%patch1023 -p1 -b .reject-cntrl-chars-in-username
+%patch1024 -p1 -b .reject-null-char-in-url-string
 
 autoreconf
 pushd pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -830,6 +836,12 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
+* Wed Dec 10 2025 Zoltan Fridrich <zfridric@redhat.com> - 8.0p1-27
+- CVE-2025-61984: Reject usernames with control characters
+  Resolves: RHEL-128400
+- CVE-2025-61985: Reject URL-strings with NULL characters
+  Resolves: RHEL-128390
+
 * Wed Aug 20 2025 Antonio Vieiro <avieirov@redhat.com> - 8.0p1-26
 - Fix missing invalid error code checks in OpenSSH. It prevents
   a MITM attack when VerifyHostKeyDNS is on (CVE-2025-26465)

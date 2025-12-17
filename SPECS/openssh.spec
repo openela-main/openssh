@@ -43,7 +43,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: 11%{?dist}
+Release: 12%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -214,6 +214,10 @@ Patch1025: openssh-9.9p1-non-supported-keys-err-msg.patch
 Patch1026: openssh-9.9p1-bad-hostkey.patch
 # https://github.com/openssh/openssh-portable/pull/500
 Patch1027: openssh-9.9p1-support-authentication-indicators-in-GSSAPI.patch
+# upstream 35d5917652106aede47621bb3f64044604164043
+Patch1028: openssh-9.9p1-reject-cntrl-chars-in-username.patch
+# upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
+Patch1029: openssh-9.9p1-reject-null-char-in-url-string.patch
 
 License: BSD-3-Clause AND BSD-2-Clause AND ISC AND SSH-OpenSSH AND ssh-keyscan AND sprintf AND LicenseRef-Fedora-Public-Domain AND X11-distribute-modifications-variant
 Requires: /sbin/nologin
@@ -406,6 +410,8 @@ gpgv2 --quiet --keyring %{SOURCE3} %{SOURCE1} %{SOURCE0}
 %patch -P 1025 -p1 -b .non-supported-keys-err-msg
 %patch -P 1026 -p1 -b .bad-hostkey
 %patch -P 1027 -p1 -b .gss-indicators
+%patch -P 1028 -p1 -b .reject-cntrl-chars-in-username
+%patch -P 1029 -p1 -b .reject-null-char-in-url-string
 
 %patch -P 100 -p1 -b .coverity
 
@@ -686,6 +692,12 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
+* Mon Dec 08 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-12
+- CVE-2025-61984: Reject usernames with control characters
+  Resolves: RHEL-128397
+- CVE-2025-61985: Reject URL-strings with NULL characters
+  Resolves: RHEL-128387
+
 * Fri Jul 18 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-11
 - Move the redhat help message to debug1 log level
   Resolves: RHEL-93957

@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.7p1
-%global openssh_rel 46
+%global openssh_rel 47
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 5
 
@@ -300,6 +300,10 @@ Patch1024: openssh-8.7p1-allow-duplicate-subsystem.patch
 # upstream 6ce00f0c2ecbb9f75023dbe627ee6460bcec78c2
 # upstream 0832aac79517611dd4de93ad0a83577994d9c907
 Patch1025: openssh-9.9p2-error_processing.patch
+# upstream 35d5917652106aede47621bb3f64044604164043
+Patch1026: openssh-8.7p1-reject-cntrl-chars-in-username.patch
+# upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
+Patch1027: openssh-8.7p1-reject-null-char-in-url-string.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -530,6 +534,8 @@ popd
 %patch1023 -p1 -b .openssl-log
 %patch1024 -p1 -b .allow-dup-subsystem
 %patch1025 -p1 -b .errcode_set
+%patch1026 -p1 -b .reject-cntrl-chars-in-username
+%patch1027 -p1 -b .reject-null-char-in-url-string
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -817,6 +823,12 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Tue Dec 09 2025 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-47
+- CVE-2025-61984: Reject usernames with control characters
+  Resolves: RHEL-128401
+- CVE-2025-61985: Reject URL-strings with NULL characters
+  Resolves: RHEL-128392
+
 * Mon Jul 21 2025 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-46
 - Move the redhat help message to debug1 log level
   Resolves: RHEL-104580

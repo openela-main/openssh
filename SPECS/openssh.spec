@@ -43,7 +43,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: 12%{?dist}
+Release: 13%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -692,6 +692,11 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
+* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-13
+- CVE-2026-3497: Fix information disclosure or denial of service due
+  to uninitialized variables in gssapi-keyex
+  Resolves: RHEL-155811
+
 * Mon Dec 08 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-12
 - CVE-2025-61984: Reject usernames with control characters
   Resolves: RHEL-128397

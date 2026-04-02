@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.7p1
-%global openssh_rel 47
+%global openssh_rel 48
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 5
 
@@ -823,6 +823,11 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-48
+- CVE-2026-3497: Fix information disclosure or denial of service due
+  to uninitialized variables in gssapi-keyex
+  Resolves: RHEL-155823
+
 * Tue Dec 09 2025 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-47
 - CVE-2025-61984: Reject usernames with control characters
   Resolves: RHEL-128401

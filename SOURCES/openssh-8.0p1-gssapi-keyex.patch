@@ -1484,11 +1484,9 @@ index 69348b96..c0e8c2f4 100644
  kex_gen_hash(
      int hash_alg,
      const struct sshbuf *client_version,
-diff --git a/kexgssc.c b/kexgssc.c
-new file mode 100644
-index 00000000..f6e1405e
---- /dev/null
-+++ b/kexgssc.c
+diff --color -ruNp a/kexgssc.c b/kexgssc.c
+--- a/kexgssc.c	1970-01-01 01:00:00.000000000 +0100
++++ b/kexgssc.c	2026-03-16 14:41:09.249639963 +0100
 @@ -0,0 +1,611 @@
 +/*
 + * Copyright (c) 2001-2009 Simon Wilkinson. All rights reserved.
@@ -1544,8 +1542,8 @@ index 00000000..f6e1405e
 +{
 +	struct kex *kex = ssh->kex;
 +	gss_buffer_desc send_tok = GSS_C_EMPTY_BUFFER,
-+	    recv_tok = GSS_C_EMPTY_BUFFER,
-+	    gssbuf, msg_tok = GSS_C_EMPTY_BUFFER, *token_ptr;
++	    recv_tok = GSS_C_EMPTY_BUFFER, gssbuf = GSS_C_EMPTY_BUFFER,
++	    msg_tok = GSS_C_EMPTY_BUFFER, *token_ptr;
 +	Gssctxt *ctxt;
 +	OM_uint32 maj_status, min_status, ret_flags;
 +	struct sshbuf *server_blob = NULL;
@@ -1697,11 +1695,11 @@ index 00000000..f6e1405e
 +						fatal("Failed to read token: %s", ssh_err(r));
 +					/* If we're already complete - protocol error */
 +					if (maj_status == GSS_S_COMPLETE)
-+						sshpkt_disconnect(ssh, "Protocol error: received token when complete");
++						ssh_packet_disconnect(ssh, "Protocol error: received token when complete");
 +				} else {
 +					/* No token included */
 +					if (maj_status != GSS_S_COMPLETE)
-+						sshpkt_disconnect(ssh, "Protocol error: did not receive final token");
++						ssh_packet_disconnect(ssh, "Protocol error: did not receive final token");
 +				}
 +				if ((r = sshpkt_get_end(ssh)) != 0) {
 +					fatal("Expecting end of packet.");
@@ -1717,7 +1715,7 @@ index 00000000..f6e1405e
 +					fatal("sshpkt_get failed: %s", ssh_err(r));
 +				fatal("GSSAPI Error: \n%.400s", msg);
 +			default:
-+				sshpkt_disconnect(ssh, "Protocol error: didn't expect packet type %d",
++				ssh_packet_disconnect(ssh, "Protocol error: didn't expect packet type %d",
 +				    type);
 +			}
 +			token_ptr = &recv_tok;
@@ -1790,7 +1788,7 @@ index 00000000..f6e1405e
 +
 +	/* Verify that the hash matches the MIC we just got. */
 +	if (GSS_ERROR(ssh_gssapi_checkmic(ctxt, &gssbuf, &msg_tok)))
-+		sshpkt_disconnect(ssh, "Hash's MIC didn't verify");
++		ssh_packet_disconnect(ssh, "Hash's MIC didn't verify");
 +
 +	gss_release_buffer(&min_status, &msg_tok);
 +
@@ -1822,8 +1820,8 @@ index 00000000..f6e1405e
 +{
 +	struct kex *kex = ssh->kex;
 +	gss_buffer_desc send_tok = GSS_C_EMPTY_BUFFER,
-+	    recv_tok = GSS_C_EMPTY_BUFFER, gssbuf,
-+            msg_tok = GSS_C_EMPTY_BUFFER, *token_ptr;
++	    recv_tok = GSS_C_EMPTY_BUFFER, gssbuf = GSS_C_EMPTY_BUFFER,
++	    msg_tok = GSS_C_EMPTY_BUFFER, *token_ptr;
 +	Gssctxt *ctxt;
 +	OM_uint32 maj_status, min_status, ret_flags;
 +	struct sshbuf *shared_secret = NULL;
@@ -1994,11 +1992,11 @@ index 00000000..f6e1405e
 +						fatal("sshpkt failed: %s", ssh_err(r));
 +					/* If we're already complete - protocol error */
 +					if (maj_status == GSS_S_COMPLETE)
-+						sshpkt_disconnect(ssh, "Protocol error: received token when complete");
++						ssh_packet_disconnect(ssh, "Protocol error: received token when complete");
 +				} else {
 +					/* No token included */
 +					if (maj_status != GSS_S_COMPLETE)
-+						sshpkt_disconnect(ssh, "Protocol error: did not receive final token");
++						ssh_packet_disconnect(ssh, "Protocol error: did not receive final token");
 +				}
 +				break;
 +			case SSH2_MSG_KEXGSS_ERROR:
@@ -2011,7 +2009,7 @@ index 00000000..f6e1405e
 +					fatal("sshpkt failed: %s", ssh_err(r));
 +				fatal("GSSAPI Error: \n%.400s", msg);
 +			default:
-+				sshpkt_disconnect(ssh, "Protocol error: didn't expect packet type %d",
++				ssh_packet_disconnect(ssh, "Protocol error: didn't expect packet type %d",
 +				    type);
 +			}
 +			token_ptr = &recv_tok;
@@ -2073,7 +2071,7 @@ index 00000000..f6e1405e
 +
 +	/* Verify that the hash matches the MIC we just got. */
 +	if (GSS_ERROR(ssh_gssapi_checkmic(ctxt, &gssbuf, &msg_tok)))
-+		sshpkt_disconnect(ssh, "Hash's MIC didn't verify");
++		ssh_packet_disconnect(ssh, "Hash's MIC didn't verify");
 +
 +	gss_release_buffer(&min_status, &msg_tok);
 +
@@ -2101,11 +2099,9 @@ index 00000000..f6e1405e
 +	return r;
 +}
 +#endif /* defined(GSSAPI) && defined(WITH_OPENSSL) */
-diff --git a/kexgsss.c b/kexgsss.c
-new file mode 100644
-index 00000000..60bc02de
---- /dev/null
-+++ b/kexgsss.c
+diff --color -ruNp a/kexgsss.c b/kexgsss.c
+--- a/kexgsss.c	1970-01-01 01:00:00.000000000 +0100
++++ b/kexgsss.c	2026-03-16 14:44:15.636404163 +0100
 @@ -0,0 +1,482 @@
 +/*
 + * Copyright (c) 2001-2009 Simon Wilkinson. All rights reserved.
@@ -2173,7 +2169,8 @@ index 00000000..60bc02de
 +	 */
 +
 +	OM_uint32 ret_flags = 0;
-+	gss_buffer_desc gssbuf = {0, NULL}, recv_tok, msg_tok;
++	gss_buffer_desc gssbuf = GSS_C_EMPTY_BUFFER,
++	    recv_tok = GSS_C_EMPTY_BUFFER, msg_tok = GSS_C_EMPTY_BUFFER;
 +	gss_buffer_desc send_tok = GSS_C_EMPTY_BUFFER;
 +	Gssctxt *ctxt = NULL;
 +	struct sshbuf *shared_secret = NULL;
@@ -2277,7 +2274,7 @@ index 00000000..60bc02de
 +				fatal("sshpkt failed: %s", ssh_err(r));
 +			break;
 +		default:
-+			sshpkt_disconnect(ssh,
++			ssh_packet_disconnect(ssh,
 +			    "Protocol error: didn't expect packet type %d",
 +			    type);
 +		}
@@ -2376,7 +2373,8 @@ index 00000000..60bc02de
 +	 */
 +
 +	OM_uint32 ret_flags = 0;
-+	gss_buffer_desc gssbuf, recv_tok, msg_tok;
++	gss_buffer_desc gssbuf = GSS_C_EMPTY_BUFFER,
++	    recv_tok = GSS_C_EMPTY_BUFFER, msg_tok = GSS_C_EMPTY_BUFFER;
 +	gss_buffer_desc send_tok = GSS_C_EMPTY_BUFFER;
 +	Gssctxt *ctxt = NULL;
 +	struct sshbuf *shared_secret = NULL;
@@ -2432,10 +2430,8 @@ index 00000000..60bc02de
 +		fatal("GSS_GEX, bad parameters: %d !< %d !< %d",
 +		    min, nbits, max);
 +	kex->dh = PRIVSEP(choose_dh(min, nbits, max));
-+	if (kex->dh == NULL) {
-+		sshpkt_disconnect(ssh, "Protocol error: no matching group found");
-+		fatal("Protocol error: no matching group found");
-+	}
++	if (kex->dh == NULL)
++		ssh_packet_disconnect(ssh, "Protocol error: no matching group found");
 +
 +	DH_get0_pqg(kex->dh, &dh_p, NULL, &dh_g);
 +	if ((r = sshpkt_start(ssh, SSH2_MSG_KEXGSS_GROUP)) != 0 ||
@@ -2473,7 +2469,7 @@ index 00000000..60bc02de
 +				fatal("sshpkt failed: %s", ssh_err(r));
 +			break;
 +		default:
-+			sshpkt_disconnect(ssh,
++			ssh_packet_disconnect(ssh,
 +			    "Protocol error: didn't expect packet type %d",
 +			    type);
 +		}

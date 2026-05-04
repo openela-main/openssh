@@ -43,7 +43,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: 13%{?dist}
+Release: 14%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -218,6 +218,19 @@ Patch1027: openssh-9.9p1-support-authentication-indicators-in-GSSAPI.patch
 Patch1028: openssh-9.9p1-reject-cntrl-chars-in-username.patch
 # upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
 Patch1029: openssh-9.9p1-reject-null-char-in-url-string.patch
+# upstream 487e8ac146f7d6616f65c125d5edb210519b833a
+Patch1030: openssh-9.9p1-scp-clear-setuid.patch
+# upstream c805b97b67c774e0bf922ffb29dfbcda9d7b5add
+Patch1031: openssh-9.9p1-mux-askpass-check.patch
+# upstream fd1c7e131f331942d20f42f31e79912d570081fa
+Patch1032: openssh-9.9p1-ecdsa-incomplete-application.patch
+# upstream fd1c7e131f331942d20f42f31e79912d570081fa
+Patch1033: openssh-9.9p1-authorized-keys-principles-option.patch
+# upstream 76685c9b09a66435cd2ad8373246adf1c53976d3
+# upstream 0a0ef4515361143cad21afa072319823854c1cf6
+# upstream 607bd871ec029e9aa22e632a22547250f3cae223
+# upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
+Patch1034: openssh-9.9p1-proxyjump-username-validity-checks.patch
 
 License: BSD-3-Clause AND BSD-2-Clause AND ISC AND SSH-OpenSSH AND ssh-keyscan AND sprintf AND LicenseRef-Fedora-Public-Domain AND X11-distribute-modifications-variant
 Requires: /sbin/nologin
@@ -412,6 +425,11 @@ gpgv2 --quiet --keyring %{SOURCE3} %{SOURCE1} %{SOURCE0}
 %patch -P 1027 -p1 -b .gss-indicators
 %patch -P 1028 -p1 -b .reject-cntrl-chars-in-username
 %patch -P 1029 -p1 -b .reject-null-char-in-url-string
+%patch -P 1030 -p1 -b .scp-clear-setuid
+%patch -P 1031 -p1 -b .mux-askpass-check
+%patch -P 1032 -p1 -b .ecdsa-incomplete-application
+%patch -P 1033 -p1 -b .authorized-keys-principles-option
+%patch -P 1034 -p1 -b .proxyjump-username-validity-checks
 
 %patch -P 100 -p1 -b .coverity
 
@@ -692,6 +710,22 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
+* Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-14
+- CVE-2026-35385: Fix privilege escalation via scp legacy protocol
+  when not in preserving file mode
+  Resolves: RHEL-164738
+- CVE-2026-35388: Add connection multiplexing confirmation for proxy-mode
+  multiplexing sessions
+  Resolves: RHEL-166237
+- CVE-2026-35387: Fix incomplete application of PubkeyAcceptedAlgorithms
+  and HostbasedAcceptedAlgorithms with regard to ECDSA keys
+  Resolves: RHEL-166221
+- CVE-2026-35414: Fix mishandling of authorized_keys principals option
+  Resolves: RHEL-166189
+- CVE-2026-35386: Add validation rules to usernames and hostnames
+  set for ProxyJump/-J on the commandline
+  Resolves: RHEL-166205
+
 * Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-13
 - CVE-2026-3497: Fix information disclosure or denial of service due
   to uninitialized variables in gssapi-keyex

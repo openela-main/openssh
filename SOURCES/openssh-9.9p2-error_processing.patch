@@ -11,13 +11,96 @@ index e2efdf06..0d0f6953 100644
  				goto out;
  			}
 @@ -1059,6 +1060,7 @@ ssh_krl_from_blob(struct sshbuf *buf, struct ssh_krl **krlp)
- 		goto out;
+ 	}
  
  	if ((krl = ssh_krl_init()) == NULL) {
 +		r = SSH_ERR_ALLOC_FAIL;
  		error_f("alloc failed");
  		goto out;
  	}
+diff --git a/packet.c b/packet.c
+index 486f8515..9dea2cfc 100644
+--- a/packet.c
++++ b/packet.c
+@@ -1864,6 +1864,14 @@ ssh_packet_read_poll_seqnr(struct ssh *ssh, u_char *typep, u_int32_t *seqnr_p)
+ 			if ((r = sshpkt_get_string_direct(ssh, &d, &len)) != 0)
+ 				return r;
+ 			DBG(debug("Received SSH2_MSG_PING len %zu", len));
++			if (!ssh->state->after_authentication) {
++				DBG(debug("Won't reply to PING in preauth"));
++				break;
++			}
++			if (ssh_packet_is_rekeying(ssh)) {
++				DBG(debug("Won't reply to PING during KEX"));
++				break;
++			}
+ 			if ((r = sshpkt_start(ssh, SSH2_MSG_PONG)) != 0 ||
+ 			    (r = sshpkt_put_string(ssh, d, len)) != 0 ||
+ 			    (r = sshpkt_send(ssh)) != 0)
+diff --git a/ssh-agent.c b/ssh-agent.c
+index 48973b2c..c27c5a95 100644
+--- a/ssh-agent.c
++++ b/ssh-agent.c
+@@ -1220,6 +1220,7 @@ parse_key_constraint_extension(struct sshbuf *m, char **sk_providerp,
+ 	    "restrict-destination-v00@openssh.com") == 0) {
+ 		if (*dcsp != NULL) {
+ 			error_f("%s already set", ext_name);
++			r = SSH_ERR_INVALID_FORMAT;
+ 			goto out;
+ 		}
+ 		if ((r = sshbuf_froms(m, &b)) != 0) {
+@@ -1229,6 +1230,7 @@ parse_key_constraint_extension(struct sshbuf *m, char **sk_providerp,
+ 		while (sshbuf_len(b) != 0) {
+ 			if (*ndcsp >= AGENT_MAX_DEST_CONSTRAINTS) {
+ 				error_f("too many %s constraints", ext_name);
++				r = SSH_ERR_INVALID_FORMAT;
+ 				goto out;
+ 			}
+ 			*dcsp = xrecallocarray(*dcsp, *ndcsp, *ndcsp + 1,
+@@ -1246,6 +1248,7 @@ parse_key_constraint_extension(struct sshbuf *m, char **sk_providerp,
+ 		}
+ 		if (*certs != NULL) {
+ 			error_f("%s already set", ext_name);
++			r = SSH_ERR_INVALID_FORMAT;
+ 			goto out;
+ 		}
+ 		if ((r = sshbuf_get_u8(m, &v)) != 0 ||
+@@ -1257,6 +1260,7 @@ parse_key_constraint_extension(struct sshbuf *m, char **sk_providerp,
+ 		while (sshbuf_len(b) != 0) {
+ 			if (*ncerts >= AGENT_MAX_EXT_CERTS) {
+ 				error_f("too many %s constraints", ext_name);
++				r = SSH_ERR_INVALID_FORMAT;
+ 				goto out;
+ 			}
+ 			*certs = xrecallocarray(*certs, *ncerts, *ncerts + 1,
+@@ -1757,6 +1761,7 @@ process_ext_session_bind(SocketEntry *e)
+ 	/* record new key/sid */
+ 	if (e->nsession_ids >= AGENT_MAX_SESSION_IDS) {
+ 		error_f("too many session IDs recorded");
++		r = -1;
+ 		goto out;
+ 	}
+ 	e->session_ids = xrecallocarray(e->session_ids, e->nsession_ids,
+diff --git a/ssh-sk-client.c b/ssh-sk-client.c
+index 321fe53a..06fad221 100644
+--- a/ssh-sk-client.c
++++ b/ssh-sk-client.c
+@@ -439,6 +439,7 @@ sshsk_load_resident(const char *provider_path, const char *device,
+ 		}
+ 		if ((srk = calloc(1, sizeof(*srk))) == NULL) {
+ 			error_f("calloc failed");
++			r = SSH_ERR_ALLOC_FAIL;
+ 			goto out;
+ 		}
+ 		srk->key = key;
+@@ -450,6 +451,7 @@ sshsk_load_resident(const char *provider_path, const char *device,
+ 		if ((tmp = recallocarray(srks, nsrks, nsrks + 1,
+ 		    sizeof(*srks))) == NULL) {
+ 			error_f("recallocarray keys failed");
++			r = SSH_ERR_ALLOC_FAIL;
+ 			goto out;
+ 		}
+ 		debug_f("srks[%zu]: %s %s uidlen %zu", nsrks,
 diff --git a/sshconnect2.c b/sshconnect2.c
 index a69c4da1..1ee6000a 100644
 --- a/sshconnect2.c

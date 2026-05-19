@@ -27,16 +27,15 @@ diff -up openssh-8.0p1/auth-pam.c.preserve-pam-errors openssh-8.0p1/auth-pam.c
  	else if (sshpam_maxtries_reached)
  		ssh_msg_send(ctxt->pam_csock, PAM_MAXTRIES, buffer);
  	else
-@@ -856,10 +862,12 @@ sshpam_query(void *ctx, char **name, cha
- 			plen++;
+@@ -856,9 +862,11 @@ sshpam_query(void *ctx, char **name, cha
  			free(msg);
  			break;
-+		case PAM_USER_UNKNOWN:
-+		case PAM_PERM_DENIED:
  		case PAM_ACCT_EXPIRED:
 +			sshpam_account_status = 0;
 +			/* FALLTHROUGH */
  		case PAM_MAXTRIES:
++		case PAM_USER_UNKNOWN:
++		case PAM_PERM_DENIED:
 -			if (type == PAM_ACCT_EXPIRED)
 -				sshpam_account_status = 0;
  			if (type == PAM_MAXTRIES)

@@ -1,7 +1,7 @@
 diff --color -ruNp a/ssh.c b/ssh.c
---- a/ssh.c	2025-07-21 16:24:30.348843762 +0200
-+++ b/ssh.c	2025-07-21 16:27:20.477953307 +0200
-@@ -174,6 +174,17 @@ static int forward_confirms_pending = -1
+--- a/ssh.c	2025-07-17 14:08:37.880551301 +0200
++++ b/ssh.c	2025-07-17 15:02:09.224627879 +0200
+@@ -175,6 +175,17 @@ static int forward_confirms_pending = -1
  extern int muxserver_sock;
  extern u_int muxclient_command;
  
@@ -9,7 +9,7 @@ diff --color -ruNp a/ssh.c b/ssh.c
 +redhat_help_message(void)
 +{
 +	if (log_level_get() >= SYSLOG_LEVEL_DEBUG1 &&
-+	    isatty(fileno(stderr))) {
++           isatty(fileno(stderr))) {
 +		fprintf(stderr,
 +"\nThe link below provides guidance on resolving common SSH errors:\n"
 +"          https://red.ht/support_rhel_ssh\n");
@@ -19,10 +19,10 @@ diff --color -ruNp a/ssh.c b/ssh.c
  /* Prints a help message to the user.  This function never returns. */
  
  static void
-@@ -1609,8 +1620,10 @@ main(int ac, char **av)
+@@ -1648,8 +1659,10 @@ main(int ac, char **av)
  	/* Open a connection to the remote host. */
- 	if (ssh_connect(ssh, host, host_arg, addrs, &hostaddr, options.port,
- 	    options.connection_attempts,
+ 	if (ssh_connect(ssh, host, options.host_arg, addrs, &hostaddr,
+ 	    options.port, options.connection_attempts,
 -	    &timeout_ms, options.tcp_keep_alive) != 0)
 +	    &timeout_ms, options.tcp_keep_alive) != 0) {
 +		redhat_help_message();

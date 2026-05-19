@@ -1,0 +1,68 @@
+diff --color -ruNp a/hostfile.c b/hostfile.c
+--- a/hostfile.c	2024-09-20 00:20:48.000000000 +0200
++++ b/hostfile.c	2025-04-30 15:52:02.792091018 +0200
+@@ -63,6 +63,14 @@
+ #include "hmac.h"
+ #include "sshbuf.h"
+ 
++static int required_rsa_size = SSH_RSA_MINIMUM_MODULUS_SIZE;
++
++void
++hostfile_set_minimum_rsa_size(int size)
++{
++	required_rsa_size = size;
++}
++
+ /* XXX hmac is too easy to dictionary attack; use bcrypt? */
+ 
+ static int
+@@ -233,6 +241,7 @@ record_hostkey(struct hostkey_foreach_li
+ 	struct load_callback_ctx *ctx = (struct load_callback_ctx *)_ctx;
+ 	struct hostkeys *hostkeys = ctx->hostkeys;
+ 	struct hostkey_entry *tmp;
++	int r = 0;
+ 
+ 	if (l->status == HKF_STATUS_INVALID) {
+ 		/* XXX make this verbose() in the future */
+@@ -241,6 +250,12 @@ record_hostkey(struct hostkey_foreach_li
+ 		return 0;
+ 	}
+ 
++	if ((r = sshkey_check_rsa_length(l->key, required_rsa_size)) != 0) {
++		debug2_f("%s:%ld: ignoring hostkey: %s",
++		    l->path, l->linenum, ssh_err(r));
++		return 0;
++	}
++
+ 	debug3_f("found %skey type %s in file %s:%lu",
+ 	    l->marker == MRK_NONE ? "" :
+ 	    (l->marker == MRK_CA ? "ca " : "revoked "),
+diff --color -ruNp a/hostfile.h b/hostfile.h
+--- a/hostfile.h	2024-09-20 00:20:48.000000000 +0200
++++ b/hostfile.h	2025-04-30 15:17:44.789206468 +0200
+@@ -119,5 +119,6 @@ int hostkeys_foreach_file(const char *pa
+     const char *host, const char *ip, u_int options, u_int note);
+ 
+ void hostfile_create_user_ssh_dir(const char *, int);
++void hostfile_set_minimum_rsa_size(int);
+ 
+ #endif
+diff --color -ruNp a/ssh.c b/ssh.c
+--- a/ssh.c	2025-04-29 15:40:27.916735894 +0200
++++ b/ssh.c	2025-04-30 15:19:48.856855308 +0200
+@@ -109,6 +109,7 @@
+ #include "ssherr.h"
+ #include "myproposal.h"
+ #include "utf8.h"
++#include "hostfile.h"
+ 
+ #ifdef ENABLE_PKCS11
+ #include "ssh-pkcs11.h"
+@@ -1395,6 +1396,7 @@ main(int ac, char **av)
+ 			options.update_hostkeys = 0;
+ 		}
+ 	}
++	hostfile_set_minimum_rsa_size(options.required_rsa_size);
+ 	if (options.connection_attempts <= 0)
+ 		fatal("Invalid number of ConnectionAttempts");
+ 

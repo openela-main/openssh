@@ -1,0 +1,101 @@
+diff -up openssh-9.9p1/compat.c.xxx openssh-9.9p1/compat.c
+--- openssh-9.9p1/compat.c.xxx	2026-02-25 12:58:14.083760269 +0100
++++ openssh-9.9p1/compat.c	2026-02-25 13:28:21.154300255 +0100
+@@ -36,6 +36,9 @@
+ #include "compat.h"
+ #include "log.h"
+ #include "match.h"
++#include <openssl/err.h>
++#include <openssl/evp.h>
++#include <openssl/fips.h>
+ 
+ /* determine bug flags from SSH protocol banner */
+ void
+@@ -143,13 +145,40 @@ compat_banner(struct ssh *ssh, const cha
+ 		ssh->compat |= SSH_RH_RSASIGSHA;
+ }
+ 
++/*
++ * 0 - unavailable
++ * 1 - available in non-FIPS mode
++ * 2 - available always
++ */
++static int is_mlkem768_available()
++{
++	static int is_fetched = -1;
++
++	if (is_fetched == -1) {
++		EVP_KEM *mlkem768 = NULL;
++
++		ERR_set_mark();
++		mlkem768 = EVP_KEM_fetch(NULL, "mlkem768", NULL);
++		is_fetched = (mlkem768 == NULL) ? 0 : 2;
++		if (is_fetched == 0 && FIPS_mode() == 1) {
++		    mlkem768 = EVP_KEM_fetch(NULL, "mlkem768", "provider=default,-fips");
++		    is_fetched = (mlkem768 == NULL) ? 0 : 1;
++		}
++ 		EVP_KEM_free(mlkem768);
++		ERR_pop_to_mark();
++ 	}
++
++	return is_fetched;
++}
++
+ /* Always returns pointer to allocated memory, caller must free. */
+ char *
+ compat_kex_proposal(struct ssh *ssh, const char *p)
+ {
+ 	char *cp = NULL, *cp2 = NULL;
++	int ml_kem_available = is_mlkem768_available();
+ 
+-	if ((ssh->compat & (SSH_BUG_CURVE25519PAD|SSH_OLD_DHGEX)) == 0)
++	if ((ssh->compat & (SSH_BUG_CURVE25519PAD|SSH_OLD_DHGEX)) == 0 && is_mlkem768_available() == 2)
+ 		return xstrdup(p);
+ 	debug2_f("original KEX proposal: %s", p);
+ 	if ((ssh->compat & SSH_BUG_CURVE25519PAD) != 0)
+@@ -164,6 +199,25 @@ compat_kex_proposal(struct ssh *ssh, con
+ 		free(cp);
+ 		cp = cp2;
+ 	}
++	if (ml_kem_available == 2)
++		return cp ? cp : xstrdup(p);
++	if (ml_kem_available == 1 && FIPS_mode()) {
++		if ((cp2 = match_filter_denylist(cp ? cp : p,
++		    "mlkem768x25519-sha256")) == NULL)
++			fatal("match_filter_denylist failed");
++		free(cp);
++		cp = cp2;
++	}
++	if (ml_kem_available == 0) {
++		if ((cp2 = match_filter_denylist(cp ? cp : p,
++		    "mlkem768x25519-sha256,"
++		    "mlkem768nistp256-sha256,"
++		    "mlkem1024nistp384-sha384")) == NULL)
++			fatal("match_filter_denylist failed");
++		free(cp);
++		cp = cp2;
++	}
++
+ 	if (cp == NULL || *cp == '\0')
+ 		fatal("No supported key exchange algorithms found");
+ 	debug2_f("compat KEX proposal: %s", cp);
+diff -up openssh-9.9p1/kex-names.c.xxx openssh-9.9p1/kex-names.c
+--- openssh-9.9p1/kex-names.c.xxx	2026-02-25 14:52:59.802597974 +0100
++++ openssh-9.9p1/kex-names.c	2026-02-25 15:31:13.376020525 +0100
+@@ -291,8 +291,14 @@ kex_names_valid(const char *names)
+ 	for ((p = strsep(&cp, ",")); p && *p != '\0';
+ 	    (p = strsep(&cp, ","))) {
+ 		if (kex_alg_by_name(p) == NULL) {
+-			if (FIPS_mode())
+-				error("\"%.100s\" is not allowed in FIPS mode", p);
++			if (FIPS_mode()) {
++				if ((strcmp(p, KEX_MLKEM768X25519_SHA256) == 0)) {
++					debug("\"%.100s\" is not allowed in FIPS mode", p);
++					continue;
++				}
++				else
++					error("\"%.100s\" is not allowed in FIPS mode", p);
++			}
+ 			else
+ 				error("Unsupported KEX algorithm \"%.100s\"", p);
+ 			free(s);

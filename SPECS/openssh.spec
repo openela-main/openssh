@@ -46,10 +46,10 @@
 %{?static_openssl:%global static_libcrypto 1}
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
-%global openssh_ver 8.7p1
-%global openssh_rel 49
+%global openssh_ver 9.9p1
+%global openssh_rel 6
 %global pam_ssh_agent_ver 0.10.4
-%global pam_ssh_agent_rel 5
+%global pam_ssh_agent_rel 7
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
@@ -133,12 +133,10 @@ Patch703: openssh-4.3p2-askpass-grab-info.patch
 Patch707: openssh-7.7p1-redhat.patch
 # warn users for unsupported UsePAM=no (#757545)
 Patch711: openssh-7.8p1-UsePAM-warning.patch
-# make aes-ctr ciphers use EVP engines such as AES-NI from OpenSSL
-Patch712: openssh-6.3p1-ctr-evp-fast.patch
 
 # GSSAPI Key Exchange (RFC 4462 + RFC 8732)
 # from https://github.com/openssh-gsskex/openssh-gsskex/tree/fedora/master
-Patch800: openssh-8.0p1-gssapi-keyex.patch
+Patch800: openssh-9.6p1-gssapi-keyex.patch
 #http://www.mail-archive.com/kerberos@mit.edu/msg17591.html
 Patch801: openssh-6.6p1-force_krb.patch
 # add new option GSSAPIEnablek5users and disable using ~/.k5users by default (#1169843)
@@ -169,8 +167,6 @@ Patch926: openssh-6.7p1-sftp-force-permission.patch
 Patch939: openssh-7.2p2-s390-closefrom.patch
 # Move MAX_DISPLAYS to a configuration option (#1341302)
 Patch944: openssh-7.3p1-x11-max-displays.patch
-# Help systemd to track the running service
-Patch948: openssh-7.4p1-systemd.patch
 # Pass inetd flags for SELinux down to openbsd compat level
 Patch949: openssh-7.6p1-cleanup-selinux.patch
 # Sandbox adjustments for s390 and audit
@@ -183,8 +179,6 @@ Patch951: openssh-8.0p1-pkcs11-uri.patch
 Patch953: openssh-7.8p1-scp-ipv6.patch
 # Mention crypto-policies in manual pages (#1668325)
 Patch962: openssh-8.0p1-crypto-policies.patch
-# Use OpenSSL high-level API to produce and verify signatures (#1707485)
-Patch963: openssh-8.0p1-openssl-evp.patch
 # Use OpenSSL KDF (#1631761)
 Patch964: openssh-8.0p1-openssl-kdf.patch
 # sk-dummy.so built with -fvisibility=hidden does not work
@@ -195,20 +189,8 @@ Patch966: openssh-8.2p1-x11-without-ipv6.patch
 Patch974: openssh-8.0p1-keygen-strip-doseol.patch
 # sshd provides PAM an incorrect error code (#1879503)
 Patch975: openssh-8.0p1-preserve-pam-errors.patch
-# Use SFTP protocol by default for scp command
-Patch976: openssh-8.7p1-sftp-default-protocol.patch
 # Implement kill switch for SCP protocol
 Patch977: openssh-8.7p1-scp-kill-switch.patch
-# CVE-2021-41617
-Patch978: openssh-8.7p1-upstream-cve-2021-41617.patch
-# fix for `ssh-keygen -Y find-principals -f /dev/null -s /dev/null` (#2024902)
-Patch979: openssh-8.7p1-find-principals-fix.patch
-# Create non-existent directories when scp works in sftp mode and some more minor fixes
-# upstream commits:
-# ba61123eef9c6356d438c90c1199a57a0d7bcb0a
-# 63670d4e9030bcee490d5a9cce561373ac5b3b23
-# ac7c9ec894ed0825d04ef69c55babb49bab1d32e
-Patch980: openssh-8.7p1-sftpscp-dir-create.patch
 # Workaround for lack of sftp_realpath in older versions of RHEL
 # https://bugzilla.redhat.com/show_bug.cgi?id=2038854
 # https://github.com/openssh/openssh-portable/pull/299
@@ -216,107 +198,53 @@ Patch980: openssh-8.7p1-sftpscp-dir-create.patch
 Patch981: openssh-8.7p1-recursive-scp.patch
 # https://github.com/djmdjm/openssh-wip/pull/13
 Patch982: openssh-8.7p1-minrsabits.patch
-# downstream only
-Patch983: openssh-8.7p1-evpgenkey.patch
 # downstream only, IBMCA tentative fix
 # From https://bugzilla.redhat.com/show_bug.cgi?id=1976202#c14
 Patch984: openssh-8.7p1-ibmca.patch
-# Upstream ff89b1bed80721295555bd083b173247a9c0484e, 5062ad48814b06162511c4f5924a33d97b6b2566
-Patch986: openssh-9.1p1-sshbanner.patch
-
-# Minimize the use of SHA1 as a proof of possession for RSA key (#2031868)
-# upstream commits:
-# 291721bc7c840d113a49518f3fca70e86248b8e8
-# 0fa33683223c76289470a954404047bc762be84c
-# Avoid dubious diagnostics on update known hosts (#2115246)
-# 8832402bd500d1661ccc80a476fd563335ef6cdc
-Patch1000: openssh-8.7p1-minimize-sha1-use.patch
-# Fix for scp clearing file when src and dest are the same (#2056884)
-# upstream commits:
-# 7b1cbcb7599d9f6a3bbad79d412604aa1203b5ee
-Patch1001: openssh-8.7p1-scp-clears-file.patch
 # Add missing options from ssh_config into ssh manpage
 # upstream bug:
 # https://bugzilla.mindrot.org/show_bug.cgi?id=3455
 Patch1002: openssh-8.7p1-ssh-manpage.patch
-# Always return allocated strings from the kex filtering so that we can free them
-# upstream commits:
-# 486c4dc3b83b4b67d663fb0fa62bc24138ec3946
-# 6c31ba10e97b6953c4f325f526f3e846dfea647a
-# 322964f8f2e9c321e77ebae1e4d2cd0ccc5c5a0b
-Patch1003: openssh-8.7p1-mem-leak.patch
-# Reenable MONITOR_REQ_GSSCHECKMIC after gssapi-with-mic failures
-# upstream MR:
-# https://github.com/openssh-gsskex/openssh-gsskex/pull/21
-Patch1004: openssh-8.7p1-gssapi-auth.patch
-# Fix host-based authentication with rsa keys
-# upstream commits:
-# 7aa7b096cf2bafe2777085abdeed5ce00581f641
-# d9dbb5d9a0326e252d3c7bc13beb9c2434f59409
-# fdb1d58d0d3888b042e5a500f6ce524486aaf782
-Patch1005: openssh-8.7p1-host-based-auth.patch
 # Don't propose disallowed algorithms during hostkey negotiation
 # upstream MR:
 # https://github.com/openssh/openssh-portable/pull/323
 Patch1006: openssh-8.7p1-negotiate-supported-algs.patch
 # 
 Patch1007: openssh-8.7p1-nohostsha1proof.patch
-# CVE-2023-25136
-# upstream 12da7823336434a403f25c7cc0c2c6aed0737a35
-# to fix 1005
-Patch1008: openssh-8.7p1-CVE-2023-25136.patch
-
-# fips compliance for signing, dh, ecdh
-Patch1009: openssh-8.7p1-evp-fips-compl-sign.patch
-Patch1010: openssh-8.7p1-evp-fips-compl-dh.patch
-Patch1011: openssh-8.7p1-evp-fips-compl-ecdh.patch
-Patch1012: openssh-8.7p1-evp-pkcs11.patch
-
-# clarify rhbz#2068423 on the man page of ssh_config
-Patch1013: openssh-8.7p1-man-hostkeyalgos.patch
-# upstream commits
-# ec1ddb72a146fd66d18df9cd423517453a5d8044
-# b98a42afb69d60891eb0488935990df6ee571c4
-# a00f59a645072e5f5a8d207af15916a7b23e2642
-Patch1014: openssh-8.7p1-UTC-time-parse.patch
-# upsream commit
-# b23fe83f06ee7e721033769cfa03ae840476d280
-Patch1015: openssh-9.3p1-upstream-cve-2023-38408.patch
-#upstream commit b7afd8a4ecaca8afd3179b55e9db79c0ff210237
-Patch1016: openssh-9.3p1-openssl-compat.patch
-#upstream commit 01dbf3d46651b7d6ddf5e45d233839bbfffaeaec
-Patch1017: openssh-9.4p2-limit-delay.patch
-#upstream commit 1edb00c58f8a6875fad6a497aa2bacf37f9e6cd5
-Patch1018: openssh-9.6p1-CVE-2023-48795.patch
-#upstream commit 7ef3787c84b6b524501211b11a26c742f829af1a
-Patch1019: openssh-9.6p1-CVE-2023-51385.patch
-#upstream commit 96faa0de6c673a2ce84736eba37fc9fb723d9e5c
-Patch1020: openssh-8.7p1-sigpipe.patch
-Patch1021: openssh-9.8p1-upstream-cve-2024-6387.patch
+Patch1012: openssh-9.0p1-evp-fips-kex.patch
+Patch1015: openssh-9.6p1-pam-rhost.patch
 Patch1022: openssh-8.7p1-redhat-help.patch
 Patch1023: openssh-8.7p1-openssl-log.patch
-#upstream commit 52dfe3c72d98503d8b7c6f64fc7e19d685636c0b
-Patch1024: openssh-8.7p1-allow-duplicate-subsystem.patch
 # upstream 6ce00f0c2ecbb9f75023dbe627ee6460bcec78c2
 # upstream 0832aac79517611dd4de93ad0a83577994d9c907
 Patch1025: openssh-9.9p2-error_processing.patch
+# upstream cf3e48ee8ba1beeccddd2f203b558fa102be67a2
+# upstream 0c3927c45f8a57b511c874c4d51a8c89414f74ef
+Patch1026: openssh-9.9p1-mlkembe.patch
+# upstream 3f02368e8e9121847727c46b280efc280e5eb615
+# upstream 67a115e7a56dbdc3f5a58c64b29231151f3670f5
+Patch1027: openssh-9.9p1-match-regression.patch
+# Downstream patch, OpenSSL based MLKEM implementation
+Patch1028: openssh-9.9p1-openssl-mlkem.patch
+# upstream 8eabd2ae2ca1d7756417a1ee5b41f09c5d997634
+Patch1029: openssh-9.9p1-compression-directive.patch
+# upstream fc86875e6acb36401dfc1dfb6b628a9d1460f367
+Patch1030: openssh-9.9p1-disable-forwarding.patch
+Patch1031: openssh-9.9p1-non-supported-keys-err-msg.patch
+Patch1032: openssh-9.9p1-bad-hostkey.patch
+# https://github.com/openssh/openssh-portable/pull/500
+Patch1033: openssh-9.9p1-support-authentication-indicators-in-GSSAPI.patch
+#
+Patch1034: openssh-9.9p1-fips-gss.patch
+#upstream 6432b9f6a216d0f5fb43df500e9bc30bebb3f58b
+#upstream 4f14ca8633a2c8c0a1a19165663421f0ab32f6ab
+Patch1035: openssh-9.9p1-scp-traversing.patch
+Patch1036: openssh-9.9p1-canonical-match-user.patch
 # upstream 35d5917652106aede47621bb3f64044604164043
-Patch1026: openssh-8.7p1-reject-cntrl-chars-in-username.patch
+Patch1037: openssh-9.9p1-reject-cntrl-chars-in-username.patch
 # upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
-Patch1027: openssh-8.7p1-reject-null-char-in-url-string.patch
-# upstream 487e8ac146f7d6616f65c125d5edb210519b833a
-Patch1028: openssh-9.9p1-scp-clear-setuid.patch
-# upstream c805b97b67c774e0bf922ffb29dfbcda9d7b5add
-Patch1029: openssh-9.9p1-mux-askpass-check.patch
-# upstream fd1c7e131f331942d20f42f31e79912d570081fa
-Patch1030: openssh-8.7p1-ecdsa-incomplete-application.patch
-# upstream fd1c7e131f331942d20f42f31e79912d570081fa
-Patch1031: openssh-8.7p1-authorized-keys-principles-option.patch
-# upstream 76685c9b09a66435cd2ad8373246adf1c53976d3
-# upstream 0a0ef4515361143cad21afa072319823854c1cf6
-# upstream 607bd871ec029e9aa22e632a22547250f3cae223
-# upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
-Patch1032: openssh-8.7p1-proxyjump-username-validity-checks.patch
+Patch1038: openssh-9.9p1-reject-null-char-in-url-string.patch
+Patch1039: openssh-9.9p1-compat-mlkem.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -471,7 +399,6 @@ popd
 %patch703 -p1 -b .grab-info
 %patch707 -p1 -b .redhat
 %patch711 -p1 -b .log-usepam-no
-%patch712 -p1 -b .evp-ctr
 # 
 %patch800 -p1 -b .gsskex
 %patch801 -p1 -b .force_krb
@@ -488,72 +415,51 @@ popd
 %patch926 -p1 -b .sftp-force-mode
 %patch939 -p1 -b .s390-dev
 %patch944 -p1 -b .x11max
-%patch948 -p1 -b .systemd
 %patch949 -p1 -b .refactor
 %patch950 -p1 -b .sandbox
 %patch951 -p1 -b .pkcs11-uri
 %patch953 -p1 -b .scp-ipv6
 %patch962 -p1 -b .crypto-policies
-%patch963 -p1 -b .openssl-evp
 %patch964 -p1 -b .openssl-kdf
 %patch965 -p1 -b .visibility
 %patch966 -p1 -b .x11-ipv6
 %patch974 -p1 -b .keygen-strip-doseol
 %patch975 -p1 -b .preserve-pam-errors
-%patch976 -p1 -b .sftp-by-default
 %patch977 -p1 -b .kill-scp
-%patch978 -p1 -b .cve-2021-41617
-%patch979 -p1 -b .find-principals
-%patch980 -p1 -b .sftpdirs
 %patch981 -p1 -b .scp-sftpdirs
 %patch982 -p1 -b .minrsabits
-%patch983 -p1 -b .evpgenrsa
 %patch984 -p1 -b .ibmca
-%patch986 -p1 -b .91cleanup
 
 %patch200 -p1 -b .audit
 %patch201 -p1 -b .audit-race
 %patch202 -p1 -b .audit-hostname
 %patch700 -p1 -b .fips
 
-%patch1000 -p1 -b .minimize-sha1-use
-%patch1001 -p1 -b .scp-clears-file
 %patch1002 -p1 -b .ssh-manpage
-%patch1003 -p1 -b .mem-leak
-%patch1004 -p1 -b .gssapi-auth
-%patch1005 -p1 -b .host-based-auth
 %patch1006 -p1 -b .negotiate-supported-algs
 
 %patch100 -p1 -b .coverity
 
 %patch1007 -p1 -b .sshrsacheck
-%patch1008 -p1 -b .cve-2023-25136
-
-%patch1009 -p1 -b .evp_fips_sign
-%patch1010 -p1 -b .evp_fips_dh
-%patch1011 -p1 -b .evp_fips_ecdh
-%patch1012 -p1 -b .evp_pkcs11
-
-%patch1013 -p1 -b .man-hostkeyalgos
-%patch1014 -p1 -b .utc_parse
-%patch1015 -p1 -b .cve-2023-38408
-%patch1016 -p1 -b .openssl3compat
-%patch1017 -p1 -b .limitdelay
-%patch1018 -p1 -b .cve-2023-48795
-%patch1019 -p1 -b .cve-2023-51385
-%patch1020 -p1 -b .earlypipe
-%patch1021 -p1 -b .cve-2024-6387
+%patch1012 -p1 -b .evp-fips-kex
+%patch1015 -p1 -b .pam-rhost
 %patch1022 -p1 -b .redhat-help
 %patch1023 -p1 -b .openssl-log
-%patch1024 -p1 -b .allow-dup-subsystem
 %patch1025 -p1 -b .errcode_set
-%patch1026 -p1 -b .reject-cntrl-chars-in-username
-%patch1027 -p1 -b .reject-null-char-in-url-string
-%patch1028 -p1 -b .scp-clear-setuid
-%patch1029 -p1 -b .mux-askpass-check
-%patch1030 -p1 -b .ecdsa-incomplete-application
-%patch1031 -p1 -b .authorized-keys-principles-option
-%patch1032 -p1 -b .proxyjump-username-validity-checks
+%patch1026 -p1 -b .mlkembe
+%patch1027 -p1 -b .match
+%patch1028 -p1 -b .openssl-mlkem
+%patch1029 -p1 -b .compression
+%patch1030 -p1 -b .disable-forwarding
+%patch1031 -p1 -b .non-supported-keys-err-msg
+%patch1032 -p1 -b .bad-hostkey
+%patch1033 -p1 -b .gss-indicators
+%patch1034 -p1 -b .gss-fips
+%patch1035 -p1 -b .scp-traversing
+%patch1036 -p1 -b .canonical-match-user
+%patch1037 -p1 -b .reject-cntrl-chars-in-username
+%patch1038 -p1 -b .reject-null-char-in-url-string
+%patch1039 -p1 -b .skip-mlkem-when-na
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -606,10 +512,10 @@ fi
 	--with-ipaddr-display \
 	--with-pie=no \
 	--without-hardening `# The hardening flags are configured by system` \
-	--with-systemd \
 	--with-default-pkcs11-provider=yes \
 	--with-security-key-builtin=yes \
 	--with-pam \
+	--enable-dsa-keys \
 %if %{WITH_SELINUX}
 	--with-selinux --with-audit=linux \
 	--with-sandbox=seccomp_filter \
@@ -800,6 +706,7 @@ test -f %{sysconfig_anaconda} && \
 %files server
 %dir %attr(0711,root,root) %{_datadir}/empty.sshd
 %attr(0755,root,root) %{_sbindir}/sshd
+%attr(0755,root,root) %{_libexecdir}/openssh/sshd-session
 %attr(0755,root,root) %{_libexecdir}/openssh/sftp-server
 %attr(0755,root,root) %{_libexecdir}/openssh/sshd-keygen
 %attr(0644,root,root) %{_mandir}/man5/sshd_config.5*
@@ -841,32 +748,35 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
-* Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-49
-- CVE-2026-35385: Fix privilege escalation via scp legacy protocol
-  when not in preserving file mode
-  Resolves: RHEL-164752
-- CVE-2026-35388: Add connection multiplexing confirmation for proxy-mode
-  multiplexing sessions
-  Resolves: RHEL-166249
-- CVE-2026-35387: Fix incomplete application of PubkeyAcceptedAlgorithms
-  and HostbasedAcceptedAlgorithms with regard to ECDSA keys
-  Resolves: RHEL-166233
-- CVE-2026-35414: Fix mishandling of authorized_keys principals option
-  Resolves: RHEL-166201
-- CVE-2026-35386: Add validation rules to usernames and hostnames
-  set for ProxyJump/-J on the commandline
-  Resolves: RHEL-166217
+* Thu Mar 26 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-6
+- Version bump
 
-* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-48
+* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-5
 - CVE-2026-3497: Fix information disclosure or denial of service due
   to uninitialized variables in gssapi-keyex
-  Resolves: RHEL-155823
+  Resolves: RHEL-155824
 
-* Tue Dec 09 2025 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-47
+* Wed Feb 25 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-4
+- Provide a way to skip unsupported ML-KEM hybrid algorithms in FIPS mode
+  Resolves: RHEL-151580
+
+* Tue Dec 09 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-3
+- Enable support for DSA keys
+  Resolves: RHEL-127624
 - CVE-2025-61984: Reject usernames with control characters
-  Resolves: RHEL-128401
+  Resolves: RHEL-133959
 - CVE-2025-61985: Reject URL-strings with NULL characters
-  Resolves: RHEL-128392
+  Resolves: RHEL-133960
+
+* Mon Oct 27 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-2
+- Fix implicit destination path selection when source path ends with ".."
+  Resolves: RHEL-119515
+- Canonicalize username when matching a user
+  Resolves: RHEL-118372
+
+* Wed Sep 10 2025 Pavol Žáčik <pzacik@redhat.com> - 9.9p1-1
+- Rebase to version 9.9
+  Resolves: RHEL-108912
 
 * Mon Jul 21 2025 Zoltan Fridrich <zfridric@redhat.com> - 8.7p1-46
 - Move the redhat help message to debug1 log level

@@ -1,6 +1,6 @@
 diff -up openssh-8.6p1/auth.h.ccache_name openssh-8.6p1/auth.h
---- openssh-8.6p1/auth.h.ccache_name	2021-05-06 11:15:36.345143341 +0200
-+++ openssh-8.6p1/auth.h	2021-05-06 11:15:36.387143654 +0200
+--- openssh-8.6p1/auth.h.ccache_name	2021-04-19 14:05:10.820744325 +0200
++++ openssh-8.6p1/auth.h	2021-04-19 14:05:10.853744569 +0200
 @@ -83,6 +83,7 @@ struct Authctxt {
  	krb5_principal	 krb5_user;
  	char		*krb5_ticket_file;
@@ -20,7 +20,7 @@ diff -up openssh-8.6p1/auth.h.ccache_name openssh-8.6p1/auth.h
  #endif /* AUTH_H */
 diff -up openssh-8.6p1/auth-krb5.c.ccache_name openssh-8.6p1/auth-krb5.c
 --- openssh-8.6p1/auth-krb5.c.ccache_name	2021-04-16 05:55:25.000000000 +0200
-+++ openssh-8.6p1/auth-krb5.c	2021-05-06 11:28:40.195242317 +0200
++++ openssh-8.6p1/auth-krb5.c	2021-04-19 14:40:55.142832954 +0200
 @@ -51,6 +51,7 @@
  #include <unistd.h>
  #include <string.h>
@@ -338,8 +338,8 @@ diff -up openssh-8.6p1/auth-krb5.c.ccache_name openssh-8.6p1/auth-krb5.c
  #endif /* !HEIMDAL */
  #endif /* KRB5 */
 diff -up openssh-8.6p1/gss-serv.c.ccache_name openssh-8.6p1/gss-serv.c
---- openssh-8.6p1/gss-serv.c.ccache_name	2021-05-06 11:15:36.374143558 +0200
-+++ openssh-8.6p1/gss-serv.c	2021-05-06 11:15:36.387143654 +0200
+--- openssh-8.6p1/gss-serv.c.ccache_name	2021-04-19 14:05:10.844744503 +0200
++++ openssh-8.6p1/gss-serv.c	2021-04-19 14:05:10.854744577 +0200
 @@ -413,13 +413,15 @@ ssh_gssapi_cleanup_creds(void)
  }
  
@@ -368,10 +368,10 @@ diff -up openssh-8.6p1/gss-serv.c.ccache_name openssh-8.6p1/gss-serv.c
 +	if (gssapi_client.store.envval == NULL)
  		return;
  
- 	ok = PRIVSEP(ssh_gssapi_update_creds(&gssapi_client.store));
+ 	ok = mm_ssh_gssapi_update_creds(&gssapi_client.store);
 diff -up openssh-8.6p1/gss-serv-krb5.c.ccache_name openssh-8.6p1/gss-serv-krb5.c
---- openssh-8.6p1/gss-serv-krb5.c.ccache_name	2021-05-06 11:15:36.384143632 +0200
-+++ openssh-8.6p1/gss-serv-krb5.c	2021-05-06 11:15:36.387143654 +0200
+--- openssh-8.6p1/gss-serv-krb5.c.ccache_name	2021-04-19 14:05:10.852744562 +0200
++++ openssh-8.6p1/gss-serv-krb5.c	2021-04-19 14:05:10.854744577 +0200
 @@ -267,7 +267,7 @@ ssh_gssapi_krb5_cmdok(krb5_principal pri
  /* This writes out any forwarded credentials from the structure populated
   * during userauth. Called after we have setuid to the user */
@@ -484,8 +484,8 @@ diff -up openssh-8.6p1/gss-serv-krb5.c.ccache_name openssh-8.6p1/gss-serv-krb5.c
  
  int
 diff -up openssh-8.6p1/servconf.c.ccache_name openssh-8.6p1/servconf.c
---- openssh-8.6p1/servconf.c.ccache_name	2021-05-06 11:15:36.377143580 +0200
-+++ openssh-8.6p1/servconf.c	2021-05-06 11:15:36.388143662 +0200
+--- openssh-8.6p1/servconf.c.ccache_name	2021-04-19 14:05:10.848744532 +0200
++++ openssh-8.6p1/servconf.c	2021-04-19 14:05:10.854744577 +0200
 @@ -136,6 +136,7 @@ initialize_server_options(ServerOptions
  	options->kerberos_or_local_passwd = -1;
  	options->kerberos_ticket_cleanup = -1;
@@ -503,16 +503,15 @@ diff -up openssh-8.6p1/servconf.c.ccache_name openssh-8.6p1/servconf.c
  	if (options->gss_authentication == -1)
  		options->gss_authentication = 0;
  	if (options->gss_keyex == -1)
-@@ -506,7 +509,8 @@ typedef enum {
+@@ -506,7 +509,7 @@ typedef enum {
 	sPort, sHostKeyFile, sLoginGraceTime,
 	sPermitRootLogin, sLogFacility, sLogLevel, sLogVerbose,
 	sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTicketCleanup,
--	sKerberosGetAFSToken, sChallengeResponseAuthentication,
-+	sKerberosGetAFSToken, sKerberosUniqueCCache,
-+	sChallengeResponseAuthentication,
-	sPasswordAuthentication, sKbdInteractiveAuthentication,
-	sListenAddress, sAddressFamily,
+-	sKerberosGetAFSToken, sPasswordAuthentication,
++	sKerberosGetAFSToken, sKerberosUniqueCCache, sPasswordAuthentication,
+	sKbdInteractiveAuthentication, sListenAddress, sAddressFamily,
 	sPrintMotd, sPrintLastLog, sIgnoreRhosts,
+	sX11Forwarding, sX11DisplayOffset, sX11UseLocalhost,
 @@ -593,11 +597,13 @@ static struct {
  #else
  	{ "kerberosgetafstoken", sUnsupported, SSHCFG_GLOBAL },
@@ -547,8 +546,8 @@ diff -up openssh-8.6p1/servconf.c.ccache_name openssh-8.6p1/servconf.c
  #ifdef GSSAPI
  	dump_cfg_fmtint(sGssAuthentication, o->gss_authentication);
 diff -up openssh-8.6p1/servconf.h.ccache_name openssh-8.6p1/servconf.h
---- openssh-8.6p1/servconf.h.ccache_name	2021-05-06 11:15:36.377143580 +0200
-+++ openssh-8.6p1/servconf.h	2021-05-06 11:15:36.397143729 +0200
+--- openssh-8.6p1/servconf.h.ccache_name	2021-04-19 14:05:10.848744532 +0200
++++ openssh-8.6p1/servconf.h	2021-04-19 14:05:10.855744584 +0200
 @@ -140,6 +140,8 @@ typedef struct {
  						 * file on logout. */
  	int     kerberos_get_afs_token;		/* If true, try to get AFS token if
@@ -559,8 +558,8 @@ diff -up openssh-8.6p1/servconf.h.ccache_name openssh-8.6p1/servconf.h
  	int     gss_keyex;		/* If true, permit GSSAPI key exchange */
  	int     gss_cleanup_creds;	/* If true, destroy cred cache on logout */
 diff -up openssh-8.6p1/session.c.ccache_name openssh-8.6p1/session.c
---- openssh-8.6p1/session.c.ccache_name	2021-05-06 11:15:36.384143632 +0200
-+++ openssh-8.6p1/session.c	2021-05-06 11:15:36.397143729 +0200
+--- openssh-8.6p1/session.c.ccache_name	2021-04-19 14:05:10.852744562 +0200
++++ openssh-8.6p1/session.c	2021-04-19 14:05:10.855744584 +0200
 @@ -1038,7 +1038,8 @@ do_setup_env(struct ssh *ssh, Session *s
  	/* Allow any GSSAPI methods that we've used to alter
  	 * the child's environment as they see fit
@@ -580,9 +579,9 @@ diff -up openssh-8.6p1/session.c.ccache_name openssh-8.6p1/session.c
  		child_set_env(&env, &envsize, "KRB5CCNAME",
  		    s->authctxt->krb5_ccname);
  #endif
-diff -up openssh-8.6p1/sshd.c.ccache_name openssh-8.6p1/sshd.c
---- openssh-8.6p1/sshd.c.ccache_name	2021-05-06 11:15:36.380143602 +0200
-+++ openssh-8.6p1/sshd.c	2021-05-06 11:15:36.398143736 +0200
+diff -up openssh-8.6p1/sshd-session.c.ccache_name openssh-8.6p1/sshd-session.c
+--- openssh-8.6p1/sshd-session.c.ccache_name	2021-04-19 14:05:10.849744540 +0200
++++ openssh-8.6p1/sshd-session.c	2021-04-19 14:05:10.855744584 +0200
 @@ -2284,7 +2284,7 @@ main(int ac, char **av)
  #ifdef GSSAPI
  	if (options.gss_authentication) {
@@ -593,8 +592,8 @@ diff -up openssh-8.6p1/sshd.c.ccache_name openssh-8.6p1/sshd.c
  	}
  #endif
 diff -up openssh-8.6p1/sshd_config.5.ccache_name openssh-8.6p1/sshd_config.5
---- openssh-8.6p1/sshd_config.5.ccache_name	2021-05-06 11:15:36.380143602 +0200
-+++ openssh-8.6p1/sshd_config.5	2021-05-06 11:15:36.398143736 +0200
+--- openssh-8.6p1/sshd_config.5.ccache_name	2021-04-19 14:05:10.849744540 +0200
++++ openssh-8.6p1/sshd_config.5	2021-04-19 14:05:10.856744592 +0200
 @@ -939,6 +939,14 @@ Specifies whether to automatically destr
  file on logout.
  The default is
@@ -608,11 +607,11 @@ diff -up openssh-8.6p1/sshd_config.5.ccache_name openssh-8.6p1/sshd_config.5
 +can lead to overwriting previous tickets by subseqent connections to the same
 +user account.
  .It Cm KexAlgorithms
- Specifies the available KEX (Key Exchange) algorithms.
- Multiple algorithms must be comma-separated.
+ Specifies the permitted KEX (Key Exchange) algorithms that the server will
+ offer to clients.
 diff -up openssh-8.6p1/ssh-gss.h.ccache_name openssh-8.6p1/ssh-gss.h
---- openssh-8.6p1/ssh-gss.h.ccache_name	2021-05-06 11:15:36.384143632 +0200
-+++ openssh-8.6p1/ssh-gss.h	2021-05-06 11:15:36.398143736 +0200
+--- openssh-8.6p1/ssh-gss.h.ccache_name	2021-04-19 14:05:10.852744562 +0200
++++ openssh-8.6p1/ssh-gss.h	2021-04-19 14:05:10.855744584 +0200
 @@ -114,7 +114,7 @@ typedef struct ssh_gssapi_mech_struct {
  	int (*dochild) (ssh_gssapi_client *);
  	int (*userok) (ssh_gssapi_client *, char *);

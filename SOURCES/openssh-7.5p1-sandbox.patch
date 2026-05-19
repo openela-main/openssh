@@ -21,7 +21,7 @@ index ca75cc7..6e7de31 100644
 +	SC_ALLOW(__NR_flock),
 +#endif
  #ifdef __NR_futex
- 	SC_ALLOW(__NR_futex),
+ 	SC_FUTEX(__NR_futex),
  #endif
 @@ -178,6 +181,9 @@ static const struct sock_filter preauth_insns[] = {
  #ifdef __NR_gettimeofday

@@ -39,9 +39,9 @@ diff -up openssh/Makefile.in.keycat openssh/Makefile.in
  SFTP_SERVER=$(libexecdir)/sftp-server
  SSH_KEYSIGN=$(libexecdir)/ssh-keysign
 +SSH_KEYCAT=$(libexecdir)/ssh-keycat
+ SSHD_SESSION=$(libexecdir)/sshd-session
  SSH_PKCS11_HELPER=$(libexecdir)/ssh-pkcs11-helper
  SSH_SK_HELPER=$(libexecdir)/ssh-sk-helper
- PRIVSEP_PATH=@PRIVSEP_PATH@
 @@ -52,6 +52,7 @@ K5LIBS=@K5LIBS@
  K5LIBS=@K5LIBS@
  GSSLIBS=@GSSLIBS@
@@ -54,20 +54,20 @@ diff -up openssh/Makefile.in.keycat openssh/Makefile.in
  
  .SUFFIXES: .lo
  
--TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ssh-sk-helper$(EXEEXT)
-+TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ssh-sk-helper$(EXEEXT) ssh-keycat$(EXEEXT)
+-TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) sshd-session$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ssh-sk-helper$(EXEEXT)
++TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) sshd-session$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ssh-sk-helper$(EXEEXT) ssh-keycat$(EXEEXT)
  
  XMSS_OBJS=\
  	ssh-xmss.o \
 @@ -190,6 +191,9 @@ ssh-pkcs11-helper$(EXEEXT): $(LIBCOMPAT)
  ssh-sk-helper$(EXEEXT): $(LIBCOMPAT) libssh.a $(SKHELPER_OBJS)
- 	$(LD) -o $@ $(SKHELPER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS) $(LIBFIDO2)
+ 	$(LD) -o $@ $(SKHELPER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS) $(LIBFIDO2) $(CHANNELLIBS)
  
 +ssh-keycat$(EXEEXT): $(LIBCOMPAT) $(SSHDOBJS) libssh.a ssh-keycat.o uidswap.o
 +	$(LD) -o $@ ssh-keycat.o uidswap.o $(LDFLAGS) -lssh -lopenbsd-compat $(KEYCATLIBS) $(LIBS)
 +
  ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a $(SSHKEYSCAN_OBJS)
- 	$(LD) -o $@ $(SSHKEYSCAN_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh $(LIBS)
+ 	$(LD) -o $@ $(SSHKEYSCAN_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh $(LIBS) $(CHANNELLIBS)
  
 @@ -321,6 +325,7 @@ install-files:
  	$(INSTALL) -m 4711 $(STRIP_OPT) ssh-keysign$(EXEEXT) $(DESTDIR)$(SSH_KEYSIGN)$(EXEEXT)
@@ -95,8 +95,8 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.keycat openssh/openbsd-compat/
 --- openssh/openbsd-compat/port-linux-sshd.c.keycat	2015-06-24 10:57:50.150849626 +0200
 +++ openssh/openbsd-compat/port-linux-sshd.c	2015-06-24 10:57:50.159849603 +0200
 @@ -54,6 +54,20 @@ extern Authctxt *the_authctxt;
+ extern Authctxt *the_authctxt;
  extern int inetd_flag;
- extern int rexeced_flag;
  
 +/* Wrapper around is_selinux_enabled() to log its return value once only */
 +int
@@ -131,7 +131,7 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.keycat openssh/openbsd-compat/
 -	rv = do_pam_putenv("SELINUX_ROLE_REQUESTED", role ? role : "");
 +	rv = set_it("SELINUX_ROLE_REQUESTED", role ? role : "");
  
- 	if (inetd_flag && !rexeced_flag) {
+ 	if (inetd_flag) {
  		use_current = "1";
  	} else {
  		use_current = "";

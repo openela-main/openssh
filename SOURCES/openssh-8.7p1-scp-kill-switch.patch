@@ -13,8 +13,8 @@ diff -up openssh-8.7p1/scp.1.kill-scp openssh-8.7p1/scp.1
 --- openssh-8.7p1/scp.1.kill-scp	2021-09-16 12:09:02.646714578 +0200
 +++ openssh-8.7p1/scp.1	2021-09-16 12:26:49.978628226 +0200
 @@ -278,6 +278,13 @@ to print debugging messages about their
- This is helpful in
- debugging connection, authentication, and configuration problems.
+ By default a 32KB buffer is used.
+ .El
  .El
 +.Pp
 +Usage of SCP protocol can be blocked by creating a world-readable

@@ -2,7 +2,7 @@ diff -up openssh-7.4p1/channels.c.x11max openssh-7.4p1/channels.c
 --- openssh-7.4p1/channels.c.x11max	2016-12-23 15:46:32.071506625 +0100
 +++ openssh-7.4p1/channels.c	2016-12-23 15:46:32.139506636 +0100
 @@ -152,8 +152,8 @@ static int all_opens_permitted = 0;
- #define FWD_PERMIT_ANY_HOST	"*"
+ #define	NUM_SOCKS	10
  
  /* -- X11 forwarding */
 -/* Maximum number of fake X11 displays to try. */
@@ -10,8 +10,8 @@ diff -up openssh-7.4p1/channels.c.x11max openssh-7.4p1/channels.c
 +/* Minimum port number for X11 forwarding */
 +#define X11_PORT_MIN 6000
  
- /* Per-channel callback for pre/post select() actions */
- typedef void chan_fn(struct ssh *, Channel *c,
+ /* Per-channel callback for pre/post IO actions */
+ typedef void chan_fn(struct ssh *, Channel *c);
 @@ -4228,7 +4228,7 @@ channel_send_window_changes(void)
   */
  int
@@ -82,7 +82,7 @@ diff -up openssh-7.4p1/channels.h.x11max openssh-7.4p1/channels.h
 +++ openssh-7.4p1/channels.h	2016-12-23 15:46:32.139506636 +0100
 @@ -293,7 +293,7 @@ int	 permitopen_port(const char *);
  
- void	 channel_set_x11_refuse_time(struct ssh *, u_int);
+ void	 channel_set_x11_refuse_time(struct ssh *, time_t);
  int	 x11_connect_display(struct ssh *);
 -int	 x11_create_display_inet(struct ssh *, int, int, int, u_int *, int **);
 +int	 x11_create_display_inet(struct ssh *, int, int, int, int, u_int *, int **);
@@ -110,9 +110,9 @@ diff -up openssh-7.4p1/servconf.c.x11max openssh-7.4p1/servconf.c
  		options->x11_use_localhost = 1;
  	if (options->xauth_location == NULL)
 @@ -419,7 +422,7 @@ typedef enum {
- 	sPasswordAuthentication, sKbdInteractiveAuthentication,
- 	sListenAddress, sAddressFamily,
- 	sPrintMotd, sPrintLastLog, sIgnoreRhosts,
+	sKerberosGetAFSToken, sKerberosUniqueCCache, sKerberosUseKuserok, sPasswordAuthentication,
+	sKbdInteractiveAuthentication, sListenAddress, sAddressFamily,
+	sPrintMotd, sPrintLastLog, sIgnoreRhosts,
 -	sX11Forwarding, sX11DisplayOffset, sX11UseLocalhost,
 +	sX11Forwarding, sX11DisplayOffset, sX11MaxDisplays, sX11UseLocalhost,
  	sPermitTTY, sStrictModes, sEmptyPasswd, sTCPKeepAlive,
@@ -191,8 +191,8 @@ diff -up openssh-7.4p1/sshd_config.5.x11max openssh-7.4p1/sshd_config.5
 --- openssh-7.4p1/sshd_config.5.x11max	2016-12-23 15:46:32.134506635 +0100
 +++ openssh-7.4p1/sshd_config.5	2016-12-23 15:46:32.141506636 +0100
 @@ -1133,6 +1133,7 @@ Available keywords are
- .Cm StreamLocalBindUnlink ,
  .Cm TrustedUserCAKeys ,
+ .Cm UnusedConnectionTimeout ,
  .Cm X11DisplayOffset ,
 +.Cm X11MaxDisplays ,
  .Cm X11Forwarding

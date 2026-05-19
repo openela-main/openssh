@@ -109,7 +109,7 @@ diff -up openssh-7.4p1/session.c.audit-race openssh-7.4p1/session.c
 @@ -717,6 +728,8 @@ do_exec(Session *s, const char *command)
  	}
  	if (s->command != NULL && s->ptyfd == -1)
- 		s->command_handle = PRIVSEP(audit_run_command(ssh, s->command));
+ 		s->command_handle = mm_audit_run_command(ssh, s->command);
 +	if (pipe(paudit) < 0)
 +		fatal("pipe: %s", strerror(errno));
  #endif
@@ -121,7 +121,7 @@ diff -up openssh-7.4p1/session.c.audit-race openssh-7.4p1/session.c
  
 +#ifdef SSH_AUDIT_EVENTS
 +	close(paudit[1]);
-+	if (use_privsep && ret == 0) {
++	if (ret == 0) {
 +		/*
 +		 * Read the audit messages from forked child and send them
 +		 * back to monitor. We don't want to communicate directly,
@@ -136,7 +136,7 @@ diff -up openssh-7.4p1/session.c.audit-race openssh-7.4p1/session.c
  	return ret;
  }
  
-@@ -1538,6 +1565,34 @@ child_close_fds(void)
+@@ -1538,6 +1565,33 @@ child_close_fds(void)
  	log_redirect_stderr_to(NULL);
  }
  
@@ -147,12 +147,11 @@ diff -up openssh-7.4p1/session.c.audit-race openssh-7.4p1/session.c
 +	int pparent = paudit[1];
 +	close(paudit[0]);
 +	/* Hack the monitor pipe to avoid race condition with parent */
-+	if (use_privsep)
-+		mm_set_monitor_pipe(pparent);
++	mm_set_monitor_pipe(pparent);
 +#endif
 +
 +	/* remove hostkey from the child's memory */
-+	destroy_sensitive_data(ssh, use_privsep);
++	destroy_sensitive_data(ssh);
 +	/*
 +	 * We can audit this, because we hacked the pipe to direct the
 +	 * messages over postauth child. But this message requires answer
@@ -176,7 +175,7 @@ diff -up openssh-7.4p1/session.c.audit-race openssh-7.4p1/session.c
  	sshpkt_fmt_connection_id(ssh, remote_id, sizeof(remote_id));
  
 -	/* remove hostkey from the child's memory */
--	destroy_sensitive_data(ssh, 1);
+-	destroy_sensitive_data(ssh);
 -	ssh_packet_clear_keys(ssh);
 -	/* Don't audit this - both us and the parent would be talking to the
 -	   monitor over a single socket, with no synchronization. */

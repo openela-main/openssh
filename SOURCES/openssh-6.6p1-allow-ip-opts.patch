@@ -1,7 +1,7 @@
 diff -up openssh/sshd.c.ip-opts openssh/sshd.c
---- openssh/sshd.c.ip-opts	2016-07-25 13:58:48.998507834 +0200
-+++ openssh/sshd.c	2016-07-25 14:01:28.346469878 +0200
-@@ -1507,12 +1507,29 @@ check_ip_options(struct ssh *ssh)
+--- openssh/sshd-session.c.ip-opts	2016-07-25 13:58:48.998507834 +0200
++++ openssh/sshd-session.c	2016-07-25 14:01:28.346469878 +0200
+@@ -1507,12 +1507,32 @@ check_ip_options(struct ssh *ssh)
  
  	if (getsockopt(sock_in, IPPROTO_IP, IP_OPTIONS, opts,
  	    &option_size) >= 0 && option_size != 0) {
@@ -21,11 +21,14 @@ diff -up openssh/sshd.c.ip-opts openssh/sshd.c
 +				case 130:
 +				case 133:
 +				case 134:
-+					i += opts[i + 1];
-+					break;
++					if (i + 1 < option_size && opts[i + 1] >= 2) {
++						i += opts[i + 1];
++						break;
++					}
++					/* FALLTHROUGH */
 +				default:
 +				/* Fail, fatally, if we detect either loose or strict
-+			 	 * source routing options. */
++			 	 * or incorrect source routing options. */
 +					text[0] = '\0';
 +					for (i = 0; i < option_size; i++)
 +						snprintf(text + i*3, sizeof(text) - i*3,
@@ -35,5 +38,5 @@ diff -up openssh/sshd.c.ip-opts openssh/sshd.c
 +			}
 +		} while (i < option_size);
  	}
- 	return;
  #endif /* IP_OPTIONS */
+ }

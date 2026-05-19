@@ -38,16 +38,16 @@ diff -up openssh-7.4p1/servconf.c.GSSAPIEnablek5users openssh-7.4p1/servconf.c
  	if (options->password_authentication == -1)
  		options->password_authentication = 1;
  	if (options->kbd_interactive_authentication == -1)
-@@ -418,7 +421,7 @@ typedef enum {
- 	sHostbasedUsesNameFromPacketOnly, sHostbasedAcceptedAlgorithms,
+@@ -578,7 +578,7 @@ typedef enum {
  	sHostKeyAlgorithms, sPerSourceMaxStartups, sPerSourceNetBlockSize,
+ 	sPerSourcePenalties, sPerSourcePenaltyExemptList,
  	sClientAliveInterval, sClientAliveCountMax, sAuthorizedKeysFile,
 -	sGssAuthentication, sGssCleanupCreds, sGssStrictAcceptor,
 +	sGssAuthentication, sGssCleanupCreds, sGssEnablek5users, sGssStrictAcceptor,
  	sGssKeyEx, sGssKexAlgorithms, sGssStoreRekey,
  	sAcceptEnv, sSetEnv, sPermitTunnel,
  	sMatch, sPermitOpen, sPermitListen, sForceCommand, sChrootDirectory,
-@@ -497,14 +500,16 @@ static struct {
+@@ -600,14 +600,16 @@ static struct {
  	{ "gssapikeyexchange", sGssKeyEx, SSHCFG_GLOBAL },
  	{ "gssapistorecredentialsonrekey", sGssStoreRekey, SSHCFG_GLOBAL },
  	{ "gssapikexalgorithms", sGssKexAlgorithms, SSHCFG_GLOBAL },
@@ -129,3 +129,6 @@ diff -up openssh-7.4p1/sshd_config.GSSAPIEnablek5users openssh-7.4p1/sshd_config
  
  # Set this to 'yes' to enable PAM authentication, account processing,
  # and session processing. If this is enabled, PAM authentication will
+diff -up openssh-9.8p1/servconf.c.xxx openssh-9.8p1/servconf.c
+--- openssh-9.8p1/servconf.c.xxx	2024-07-11 13:51:19.969960781 +0200
++++ openssh-9.8p1/servconf.c	2024-07-11 13:51:30.938231250 +0200

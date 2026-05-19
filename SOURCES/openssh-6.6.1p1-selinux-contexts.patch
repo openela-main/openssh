@@ -93,19 +93,17 @@ index 8f32464..18a2ca4 100644
  #endif
  
 diff --git a/openbsd-compat/port-linux.c b/openbsd-compat/port-linux.c
-index 22ea8ef..1fc963d 100644
---- a/openbsd-compat/port-linux.c
-+++ b/openbsd-compat/port-linux.c
-@@ -179,7 +179,7 @@ ssh_selinux_change_context(const char *newname)
- 	strlcpy(newctx + len, newname, newlen - len);
- 	if ((cx = index(cx + 1, ':')))
- 		strlcat(newctx, cx, newlen);
--	debug3("%s: setting context from '%s' to '%s'", __func__,
-+	debug_f("setting context from '%s' to '%s'",
- 	    oldctx, newctx);
+--- a/openbsd-compat/port-linux.c	(revision 8241b9c0529228b4b86d88b1a6076fb9f97e4a99)
++++ b/openbsd-compat/port-linux.c	(date 1703108053912)
+@@ -207,7 +207,7 @@
+ 	xasprintf(&newctx, "%.*s%s%s", (int)(cx - oldctx + 1), oldctx,
+ 	    newname, cx2 == NULL ? "" : cx2);
+
+-	debug3_f("setting context from '%s' to '%s'", oldctx, newctx);
++	debug_f("setting context from '%s' to '%s'", oldctx, newctx);
  	if (setcon(newctx) < 0)
- 		do_log2(log_level, "%s: setcon %s from %s failed with %s",
-		    __func__, newctx, oldctx, strerror(errno));
+ 		do_log2_f(log_level, "setcon %s from %s failed with %s",
+ 		    newctx, oldctx, strerror(errno));
 diff --git a/openbsd-compat/port-linux.h b/openbsd-compat/port-linux.h
 index cb51f99..8b7cda2 100644
 --- a/openbsd-compat/port-linux.h
@@ -118,10 +116,10 @@ index cb51f99..8b7cda2 100644
  #endif
  
  #ifdef LINUX_OOM_ADJUST
-diff --git a/sshd.c b/sshd.c
+diff --git a/sshd-session.c b/sshd-session.c
 index 2871fe9..39b9c08 100644
---- a/sshd.c
-+++ b/sshd.c
+--- a/sshd-session.c
++++ b/sshd-session.c
 @@ -629,7 +629,7 @@ privsep_preauth_child(void)
  	demote_sensitive_data();
  

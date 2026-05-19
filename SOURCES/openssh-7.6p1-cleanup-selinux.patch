@@ -1,23 +1,22 @@
 diff -up openssh/auth2-pubkey.c.refactor openssh/auth2-pubkey.c
 --- openssh/auth2-pubkey.c.refactor	2019-04-04 13:19:12.188821236 +0200
 +++ openssh/auth2-pubkey.c	2019-04-04 13:19:12.276822078 +0200
-@@ -72,6 +72,9 @@
+@@ -72,6 +72,8 @@
  
  /* import */
  extern ServerOptions options;
 +extern int inetd_flag;
-+extern int rexeced_flag;
 +extern Authctxt *the_authctxt;
+ extern struct authmethod_cfg methodcfg_pubkey;
  
  static char *
- format_key(const struct sshkey *key)
 @@ -511,7 +514,8 @@ match_principals_command(struct ssh *ssh
  	if ((pid = subprocess("AuthorizedPrincipalsCommand", command,
  	    ac, av, &f,
  	    SSH_SUBPROCESS_STDOUT_CAPTURE|SSH_SUBPROCESS_STDERR_DISCARD,
 -	    runas_pw, temporarily_use_uid, restore_uid)) == 0)
 +	    runas_pw, temporarily_use_uid, restore_uid,
-+	    (inetd_flag && !rexeced_flag), the_authctxt)) == 0)
++	    inetd_flag, the_authctxt)) == 0)
  		goto out;
  
  	uid_swapped = 1;
@@ -27,7 +26,7 @@ diff -up openssh/auth2-pubkey.c.refactor openssh/auth2-pubkey.c
 	    SSH_SUBPROCESS_STDOUT_CAPTURE|SSH_SUBPROCESS_STDERR_DISCARD,
 -	    runas_pw, temporarily_use_uid, restore_uid)) == 0)
 +	    runas_pw, temporarily_use_uid, restore_uid,
-+	    (inetd_flag && !rexeced_flag), the_authctxt)) == 0)
++	    inetd_flag, the_authctxt)) == 0)
  		goto out;
  
  	uid_swapped = 1;
@@ -82,14 +81,13 @@ diff -up openssh/openbsd-compat/port-linux.h.refactor openssh/openbsd-compat/por
 diff -up openssh/openbsd-compat/port-linux-sshd.c.refactor openssh/openbsd-compat/port-linux-sshd.c
 --- openssh/openbsd-compat/port-linux-sshd.c.refactor	2019-04-04 13:19:12.256821887 +0200
 +++ openssh/openbsd-compat/port-linux-sshd.c	2019-04-04 13:19:12.276822078 +0200
-@@ -49,11 +49,6 @@
+@@ -49,10 +49,6 @@
  #include <unistd.h>
  #endif
  
 -extern ServerOptions options;
 -extern Authctxt *the_authctxt;
 -extern int inetd_flag;
--extern int rexeced_flag;
 -
  /* Wrapper around is_selinux_enabled() to log its return value once only */
  int
@@ -128,7 +126,7 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.refactor openssh/openbsd-compa
  
  	if (r == 0) {
  		/* If launched from xinetd, we must use current level */
--		if (inetd_flag && !rexeced_flag) {
+-		if (inetd_flag) {
 +		if (inetd) {
  			security_context_t sshdsc=NULL;
  
@@ -152,7 +150,7 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.refactor openssh/openbsd-compa
  
  	rv = set_it("SELINUX_ROLE_REQUESTED", role ? role : "");
  
--	if (inetd_flag && !rexeced_flag) {
+-	if (inetd_flag) {
 +	if (inetd) {
  		use_current = "1";
  	} else {
@@ -216,55 +214,45 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.refactor openssh/openbsd-compa
 diff -up openssh/platform.c.refactor openssh/platform.c
 --- openssh/platform.c.refactor	2019-04-04 13:19:12.204821389 +0200
 +++ openssh/platform.c	2019-04-04 13:19:12.277822088 +0200
-@@ -32,6 +32,9 @@
+@@ -32,6 +32,8 @@
+ #include "openbsd-compat/openbsd-compat.h"
  
- extern int use_privsep;
  extern ServerOptions options;
 +extern int inetd_flag;
-+extern int rexeced_flag;
 +extern Authctxt *the_authctxt;
  
- void
- platform_pre_listen(void)
+ /* return 1 if we are running with privilege to swap UIDs, 0 otherwise */
+ int
 @@ -183,7 +186,9 @@ platform_setusercontext_post_groups(stru
  	}
  #endif /* HAVE_SETPCRED */
  #ifdef WITH_SELINUX
 -	sshd_selinux_setup_exec_context(pw->pw_name);
 +	sshd_selinux_setup_exec_context(pw->pw_name,
-+	    (inetd_flag && !rexeced_flag), do_pam_putenv, the_authctxt,
++	    inetd_flag, do_pam_putenv, the_authctxt,
 +	    options.use_pam);
  #endif
  }
  
-diff -up openssh/sshd.c.refactor openssh/sshd.c
---- openssh/sshd.c.refactor	2019-04-04 13:19:12.275822068 +0200
-+++ openssh/sshd.c	2019-04-04 13:19:51.270195262 +0200
+diff -up openssh/sshd-session.c.refactor openssh/sshd-session.c
+--- openssh/sshd-session.c.refactor	2019-04-04 13:19:12.275822068 +0200
++++ openssh/sshd-session.c	2019-04-04 13:19:51.270195262 +0200
 @@ -158,7 +158,7 @@ int debug_flag = 0;
- static int test_flag = 0;
+ int debug_flag = 0;
  
  /* Flag indicating that the daemon is being started from inetd. */
 -static int inetd_flag = 0;
 +int inetd_flag = 0;
  
- /* Flag indicating that sshd should not detach and become a daemon. */
- static int no_daemon_flag = 0;
-@@ -171,7 +171,7 @@ static char **saved_argv;
- static int saved_argc;
- 
- /* re-exec */
--static int rexeced_flag = 0;
-+int rexeced_flag = 0;
- static int rexec_flag = 1;
- static int rexec_argc = 0;
- static char **rexec_argv;
+ /* debug goes to stderr unless inetd_flag is set */
+ static int log_stderr = 0;
 @@ -2192,7 +2192,9 @@ main(int ac, char **av)
  	}
  #endif
  #ifdef WITH_SELINUX
 -	sshd_selinux_setup_exec_context(authctxt->pw->pw_name);
 +	sshd_selinux_setup_exec_context(authctxt->pw->pw_name,
-+	    (inetd_flag && !rexeced_flag), do_pam_putenv, the_authctxt,
++	    inetd_flag, do_pam_putenv, the_authctxt,
 +	    options.use_pam);
  #endif
  #ifdef USE_PAM

@@ -1,6 +1,16 @@
-diff -up openssh-8.7p1/log.c.xxx openssh-8.7p1/log.c
---- openssh-8.7p1/log.c.xxx	2024-10-18 13:00:56.419560563 +0200
-+++ openssh-8.7p1/log.c	2024-10-18 13:22:35.954819016 +0200
+diff -up openssh-9.9p1/log.c.xxx openssh-9.9p1/log.c
+--- openssh-9.9p1/log.c.xxx	2024-10-22 11:55:44.281939275 +0200
++++ openssh-9.9p1/log.c	2024-10-22 11:56:16.709676267 +0200
+@@ -52,6 +52,9 @@
+ 
+ #include "log.h"
+ #include "match.h"
++#ifdef WITH_OPENSSL
++#include <openssl/err.h>
++#endif
+ 
+ static LogLevel log_level = SYSLOG_LEVEL_INFO;
+ static int log_on_stderr = 1;
 @@ -438,6 +438,26 @@ sshlog(const char *file, const char *fun
  	va_end(args);
  }
@@ -38,7 +48,7 @@ diff -up openssh-8.7p1/log.h.xxx openssh-8.7p1/log.h
 +void	 sshlog_openssl(int);
  void	 sshlogv(const char *, const char *, int, int,
      LogLevel, const char *, const char *, va_list);
- void	 sshsigdie(const char *, const char *, int, int,
+ void	 sshlogdie(const char *, const char *, int, int,
 diff -up openssh-8.7p1/auth2-pubkey.c.yyy openssh-8.7p1/auth2-pubkey.c
 --- openssh-8.7p1/auth2-pubkey.c.yyy	2024-10-18 13:27:00.709055845 +0200
 +++ openssh-8.7p1/auth2-pubkey.c	2024-10-18 13:27:31.638784460 +0200
@@ -63,3 +73,40 @@ diff -up openssh-8.7p1/dispatch.c.yyy openssh-8.7p1/dispatch.c
  		sshpkt_fatal(ssh, r, "%s", __func__);
 +	}
  }
+diff -up openssh-9.9p1/Makefile.in.xxx openssh-9.9p1/Makefile.in
+--- openssh-9.9p1/Makefile.in.xxx	2025-01-27 12:56:58.533623367 +0100
++++ openssh-9.9p1/Makefile.in	2025-01-27 12:57:41.635638843 +0100
+@@ -224,7 +224,7 @@ sshd-session$(EXEEXT): libssh.a	$(LIBCOM
+ 	$(LD) -o $@ $(SSHD_SESSION_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(SSHDLIBS) $(LIBS) $(GSSLIBS) $(K5LIBS) $(CHANNELLIBS)
+ 
+ scp$(EXEEXT): $(LIBCOMPAT) libssh.a $(SCP_OBJS)
+-	$(LD) -o $@ $(SCP_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
++	$(LD) -o $@ $(SCP_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lcrypto $(LIBS)
+ 
+ ssh-add$(EXEEXT): $(LIBCOMPAT) libssh.a $(SSHADD_OBJS)
+ 	$(LD) -o $@ $(SSHADD_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) $(CHANNELLIBS)
+@@ -245,20 +245,20 @@ ssh-sk-helper$(EXEEXT): $(LIBCOMPAT) lib
+ 	$(LD) -o $@ $(SKHELPER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS) $(LIBFIDO2) $(CHANNELLIBS)
+ 
+ ssh-keycat$(EXEEXT): $(LIBCOMPAT) $(SSHDOBJS) libssh.a ssh-keycat.o uidswap.o
+-	$(LD) -o $@ ssh-keycat.o uidswap.o $(LDFLAGS) -lssh -lopenbsd-compat $(KEYCATLIBS) $(LIBS)
++	$(LD) -o $@ ssh-keycat.o uidswap.o $(LDFLAGS) -lssh -lopenbsd-compat -lcrypto $(KEYCATLIBS) $(LIBS)
+ 
+ ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a $(SSHKEYSCAN_OBJS)
+ 	$(LD) -o $@ $(SSHKEYSCAN_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh $(LIBS) $(CHANNELLIBS)
+ 
+ sftp-server$(EXEEXT): $(LIBCOMPAT) libssh.a $(SFTPSERVER_OBJS)
+-	$(LD) -o $@ $(SFTPSERVER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh $(LIBS)
++	$(LD) -o $@ $(SFTPSERVER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lcrypto $(LIBS)
+ 
+ sftp$(EXEEXT): $(LIBCOMPAT) libssh.a $(SFTP_OBJS)
+-	$(LD) -o $@ $(SFTP_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) $(LIBEDIT)
++	$(LD) -o $@ $(SFTP_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lcrypto $(LIBS) $(LIBEDIT)
+ 
+ # test driver for the loginrec code - not built by default
+ logintest: logintest.o $(LIBCOMPAT) libssh.a loginrec.o
+-	$(LD) -o $@ logintest.o $(LDFLAGS) loginrec.o -lopenbsd-compat -lssh $(LIBS)
++	$(LD) -o $@ logintest.o $(LDFLAGS) loginrec.o -lopenbsd-compat -lssh -lcrypto $(LIBS)
+ 
+ $(MANPAGES): $(MANPAGES_IN)
+ 	if test "$(MANTYPE)" = "cat"; then \

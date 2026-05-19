@@ -23,23 +23,20 @@ diff -up openssh/auth2.c.role-mls openssh/auth2.c
  	if ((style = strchr(user, ':')) != NULL)
  		*style++ = 0;
  
-@@ -296,8 +304,15 @@ input_userauth_request(int type, u_int32
- 		    use_privsep ? " [net]" : "");
+@@ -314,7 +314,13 @@ input_userauth_request(int type, u_int32
+ 		setproctitle("%s [net]", authctxt->valid ? user : "unknown");
  		authctxt->service = xstrdup(service);
  		authctxt->style = style ? xstrdup(style) : NULL;
--		if (use_privsep)
 +#ifdef WITH_SELINUX
 +		authctxt->role = role ? xstrdup(role) : NULL;
 +#endif
-+		if (use_privsep) {
- 			mm_inform_authserv(service, style);
+ 		mm_inform_authserv(service, style);
 +#ifdef WITH_SELINUX
-+			mm_inform_authrole(role);
++         	mm_inform_authrole(role);
 +#endif
-+		}
  		userauth_banner(ssh);
- 		if (auth2_setup_methods_lists(authctxt) != 0)
- 			ssh_packet_disconnect(ssh,
+ 		if ((r = kex_server_update_ext_info(ssh)) != 0)
+ 			fatal_fr(r, "kex_server_update_ext_info failed");
 diff -up openssh/auth2-gss.c.role-mls openssh/auth2-gss.c
 --- openssh/auth2-gss.c.role-mls	2018-08-20 07:57:29.000000000 +0200
 +++ openssh/auth2-gss.c	2018-08-22 11:15:42.459799171 +0200
@@ -50,7 +47,7 @@ diff -up openssh/auth2-gss.c.role-mls openssh/auth2-gss.c
 +	char *micuser;
  	struct sshbuf *b;
  	gss_buffer_desc mic, gssbuf;
- 	const char *displayname;
+ 	u_char *p;
 @@ -298,7 +299,13 @@ input_gssapi_mic(int type, u_int32_t ple
  		fatal_f("sshbuf_new failed");
  	mic.value = p;
@@ -74,7 +71,7 @@ diff -up openssh/auth2-gss.c.role-mls openssh/auth2-gss.c
 +		free(micuser);
  	free(mic.value);
  
- 	if ((!use_privsep || mm_is_monitor()) &&
+ 	authctxt->postponed = 0;
 diff -up openssh/auth2-hostbased.c.role-mls openssh/auth2-hostbased.c
 --- openssh/auth2-hostbased.c.role-mls	2018-08-20 07:57:29.000000000 +0200
 +++ openssh/auth2-hostbased.c	2018-08-22 11:14:56.816430924 +0200
@@ -93,7 +90,7 @@ diff -up openssh/auth2-hostbased.c.role-mls openssh/auth2-hostbased.c
  	    (r = sshbuf_put_cstring(b, authctxt->user)) != 0 ||
 +#endif
  	    (r = sshbuf_put_cstring(b, authctxt->service)) != 0 ||
- 	    (r = sshbuf_put_cstring(b, "hostbased")) != 0 ||
+ 	    (r = sshbuf_put_cstring(b, method)) != 0 ||
  	    (r = sshbuf_put_string(b, pkalg, alen)) != 0 ||
 diff -up openssh/auth2-pubkey.c.role-mls openssh/auth2-pubkey.c
 --- openssh/auth2-pubkey.c.role-mls	2018-08-22 11:14:56.816430924 +0200
@@ -147,7 +144,7 @@ diff -up openssh/auth-pam.h.role-mls openssh/auth-pam.h
 +++ openssh/auth-pam.h	2018-08-22 11:14:56.817430932 +0200
 @@ -33,7 +33,7 @@ u_int do_pam_account(void);
  void do_pam_session(struct ssh *);
- void do_pam_setcred(int );
+ void do_pam_setcred(void);
  void do_pam_chauthtok(void);
 -int do_pam_putenv(char *, char *);
 +int do_pam_putenv(char *, const char *);
@@ -240,14 +237,14 @@ diff -up openssh-8.6p1/monitor.c.role-mls openssh-8.6p1/monitor.c
  mm_answer_authpassword(struct ssh *ssh, int sock, struct sshbuf *m)
  {
 @@ -1251,7 +1280,7 @@ monitor_valid_userblob(struct ssh *ssh,
- {
  	struct sshbuf *b;
+	struct sshkey *hostkey = NULL;
  	const u_char *p;
 -	char *userstyle, *cp;
 +	char *userstyle, *s, *cp;
  	size_t len;
  	u_char type;
- 	int r, fail = 0;
+ 	int hostbound = 0, r, fail = 0;
 @@ -1282,6 +1311,8 @@ monitor_valid_userblob(struct ssh *ssh,
  		fail++;
  	if ((r = sshbuf_get_cstring(b, &cp, NULL)) != 0)
@@ -418,7 +415,7 @@ diff -up openssh/openbsd-compat/port-linux.h.role-mls openssh/openbsd-compat/por
 diff -up openssh/openbsd-compat/port-linux-sshd.c.role-mls openssh/openbsd-compat/port-linux-sshd.c
 --- openssh/openbsd-compat/port-linux-sshd.c.role-mls	2018-08-22 11:14:56.819430949 +0200
 +++ openssh/openbsd-compat/port-linux-sshd.c	2018-08-22 11:14:56.819430949 +0200
-@@ -0,0 +1,421 @@
+@@ -0,0 +1,420 @@
 +/*
 + * Copyright (c) 2005 Daniel Walsh <dwalsh@redhat.com>
 + * Copyright (c) 2014 Petr Lautrbach <plautrba@redhat.com>
@@ -472,7 +469,6 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.role-mls openssh/openbsd-compa
 +extern ServerOptions options;
 +extern Authctxt *the_authctxt;
 +extern int inetd_flag;
-+extern int rexeced_flag;
 +
 +/* Send audit message */
 +static int
@@ -678,7 +674,7 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.role-mls openssh/openbsd-compa
 +
 +	if (r == 0) {
 +		/* If launched from xinetd, we must use current level */
-+		if (inetd_flag && !rexeced_flag) {
++		if (inetd_flag) {
 +			security_context_t sshdsc=NULL;
 +
 +			if (getcon_raw(&sshdsc) < 0)
@@ -752,7 +748,7 @@ diff -up openssh/openbsd-compat/port-linux-sshd.c.role-mls openssh/openbsd-compa
 +
 +	rv = do_pam_putenv("SELINUX_ROLE_REQUESTED", role ? role : "");
 +
-+	if (inetd_flag && !rexeced_flag) {
++	if (inetd_flag) {
 +		use_current = "1";
 +	} else {
 +		use_current = "";
@@ -853,8 +849,8 @@ diff -up openssh/platform.c.role-mls openssh/platform.c
  }
  
 diff -up openssh/sshd.c.role-mls openssh/sshd.c
---- openssh/sshd.c.role-mls	2018-08-20 07:57:29.000000000 +0200
-+++ openssh/sshd.c	2018-08-22 11:14:56.820430957 +0200
+--- openssh/sshd-session.c.role-mls	2018-08-20 07:57:29.000000000 +0200
++++ openssh/sshd-session.c	2018-08-22 11:14:56.820430957 +0200
 @@ -2186,6 +2186,9 @@ main(int ac, char **av)
  		restore_uid();
  	}
@@ -864,4 +860,4 @@ diff -up openssh/sshd.c.role-mls openssh/sshd.c
 +#endif
  #ifdef USE_PAM
  	if (options.use_pam) {
- 		do_pam_setcred(1);
+ 		do_pam_setcred();

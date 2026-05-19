@@ -155,8 +155,8 @@ diff -up openssh-7.4p1/gss-serv-krb5.c.kuserok openssh-7.4p1/gss-serv-krb5.c
  	 * because if they are on a krb5-protected filesystem, user credentials
  	 * to access these files aren't available yet. */
 -	if (krb5_kuserok(krb_context, princ, name) && k5login_exists) {
-+	if (ssh_krb5_kuserok(krb_context, princ, name, k5login_exists)
-+			&& k5login_exists) {
++	if (k5login_exists &&
++	    ssh_krb5_kuserok(krb_context, princ, name, k5login_exists)) {
  		retval = 1;
  		logit("Authorized to %s, krb5 principal %s (krb5_kuserok)",
  		    name, (char *)client->displayname.value);
@@ -196,11 +196,11 @@ diff -up openssh-7.4p1/servconf.c.kuserok openssh-7.4p1/servconf.c
 	sPort, sHostKeyFile, sLoginGraceTime,
 	sPermitRootLogin, sLogFacility, sLogLevel, sLogVerbose,
 	sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTicketCleanup,
--	sKerberosGetAFSToken, sKerberosUniqueCCache,
-+	sKerberosGetAFSToken, sKerberosUniqueCCache, sKerberosUseKuserok,
- 	sChallengeResponseAuthentication,
- 	sPasswordAuthentication, sKbdInteractiveAuthentication,
- 	sListenAddress, sAddressFamily,
+-	sKerberosGetAFSToken, sKerberosUniqueCCache, sPasswordAuthentication,
++	sKerberosGetAFSToken, sKerberosUniqueCCache, sKerberosUseKuserok, sPasswordAuthentication,
+	sKbdInteractiveAuthentication, sListenAddress, sAddressFamily,
+	sPrintMotd, sPrintLastLog, sIgnoreRhosts,
+	sX11Forwarding, sX11DisplayOffset, sX11UseLocalhost,
 @@ -478,12 +481,14 @@ static struct {
  	{ "kerberosgetafstoken", sUnsupported, SSHCFG_GLOBAL },
  #endif
@@ -266,8 +266,8 @@ diff -up openssh-7.4p1/sshd_config.5.kuserok openssh-7.4p1/sshd_config.5
 +The default is
 +.Cm yes .
  .It Cm KexAlgorithms
- Specifies the available KEX (Key Exchange) algorithms.
- Multiple algorithms must be comma-separated.
+ Specifies the permitted KEX (Key Exchange) algorithms that the server will
+ offer to clients.
 @@ -1078,6 +1082,7 @@ Available keywords are
  .Cm IPQoS ,
  .Cm KbdInteractiveAuthentication ,

@@ -1,0 +1,120 @@
+diff --color -ruNp a/auth.c b/auth.c
+--- a/auth.c	2025-10-29 09:57:20.440640281 +0100
++++ b/auth.c	2025-10-29 09:57:54.747956792 +0100
+@@ -476,8 +476,12 @@ getpwnamallow(struct ssh *ssh, const cha
+ 	u_int i;
+ 
+ 	ci = server_get_connection_info(ssh, 1, options.use_dns);
+-	ci->user = user;
+-	ci->user_invalid = getpwnam(user) == NULL;
++	pw = getpwnam(user);
++	if (pw != NULL && options.canonical_match_user)
++		ci->user = pw->pw_name;
++	else
++		ci->user = user;
++	ci->user_invalid = pw == NULL;
+ 	parse_server_match_config(&options, &includes, ci);
+ 	log_change_level(options.log_level);
+ 	log_verbose_reset();
+diff --color -ruNp a/servconf.c b/servconf.c
+--- a/servconf.c	2025-10-29 09:57:20.502465586 +0100
++++ b/servconf.c	2025-10-29 09:57:54.748205464 +0100
+@@ -225,6 +225,7 @@ initialize_server_options(ServerOptions
+ 	options->unused_connection_timeout = -1;
+ 	options->sshd_session_path = NULL;
+ 	options->refuse_connection = -1;
++	options->canonical_match_user = -1;
+ }
+ 
+ /* Returns 1 if a string option is unset or set to "none" or 0 otherwise. */
+@@ -526,6 +527,8 @@ fill_default_server_options(ServerOption
+ 		options->sshd_session_path = xstrdup(_PATH_SSHD_SESSION);
+ 	if (options->refuse_connection == -1)
+ 		options->refuse_connection = 0;
++	if (options->canonical_match_user == -1)
++		options->canonical_match_user = 0;
+ 
+ 	assemble_algorithms(options);
+ 
+@@ -609,7 +612,7 @@ typedef enum {
+ 	sAllowStreamLocalForwarding, sFingerprintHash, sDisableForwarding,
+ 	sExposeAuthInfo, sRDomain, sPubkeyAuthOptions, sSecurityKeyProvider,
+ 	sRequiredRSASize, sChannelTimeout, sUnusedConnectionTimeout,
+-	sSshdSessionPath, sRefuseConnection,
++	sSshdSessionPath, sRefuseConnection, sCanonicalMatchUser,
+ 	sDeprecated, sIgnore, sUnsupported
+ } ServerOpCodes;
+ 
+@@ -798,6 +801,7 @@ static struct {
+ 	{ "unusedconnectiontimeout", sUnusedConnectionTimeout, SSHCFG_ALL },
+ 	{ "sshdsessionpath", sSshdSessionPath, SSHCFG_GLOBAL },
+ 	{ "refuseconnection", sRefuseConnection, SSHCFG_ALL },
++	{ "canonicalmatchuser", sCanonicalMatchUser, SSHCFG_GLOBAL },
+ 	{ NULL, sBadOption, 0 }
+ };
+ 
+@@ -2807,6 +2811,11 @@ process_server_config_line_depth(ServerO
+ 		multistate_ptr = multistate_flag;
+ 		goto parse_multistate;
+ 
++	case sCanonicalMatchUser:
++		intptr = &options->canonical_match_user;
++		multistate_ptr = multistate_flag;
++		goto parse_multistate;
++
+ 	case sDeprecated:
+ 	case sIgnore:
+ 	case sUnsupported:
+@@ -3028,6 +3037,7 @@ copy_set_server_options(ServerOptions *d
+ 	M_CP_INTOPT(required_rsa_size);
+ 	M_CP_INTOPT(unused_connection_timeout);
+ 	M_CP_INTOPT(refuse_connection);
++	M_CP_INTOPT(canonical_match_user);
+ 
+ 	/*
+ 	 * The bind_mask is a mode_t that may be unsigned, so we can't use
+@@ -3368,6 +3378,7 @@ dump_config(ServerOptions *o)
+ 	dump_cfg_fmtint(sFingerprintHash, o->fingerprint_hash);
+ 	dump_cfg_fmtint(sExposeAuthInfo, o->expose_userauth_info);
+ 	dump_cfg_fmtint(sRefuseConnection, o->refuse_connection);
++	dump_cfg_fmtint(sCanonicalMatchUser, o->canonical_match_user);
+ 
+ 	/* string arguments */
+ 	dump_cfg_string(sPidFile, o->pid_file);
+diff --color -ruNp a/servconf.h b/servconf.h
+--- a/servconf.h	2025-10-29 09:57:20.503199202 +0100
++++ b/servconf.h	2025-10-29 09:57:54.749236422 +0100
+@@ -261,6 +261,8 @@ typedef struct {
+ 	char   *sshd_session_path;
+ 
+ 	int	refuse_connection;
++
++	int	canonical_match_user;
+ }       ServerOptions;
+ 
+ /* Information about the incoming connection as used by Match */
+diff --color -ruNp a/sshd_config.5 b/sshd_config.5
+--- a/sshd_config.5	2025-10-29 09:57:20.503465608 +0100
++++ b/sshd_config.5	2025-10-29 09:57:54.749544972 +0100
+@@ -1384,6 +1384,7 @@ Available keywords are
+ .Cm PubkeyAuthentication ,
+ .Cm PubkeyAuthOptions ,
+ .Cm RefuseConnection ,
++.Cm CanonicalMatchUser ,
+ .Cm RekeyLimit ,
+ .Cm RevokedKeys ,
+ .Cm RDomain ,
+@@ -1828,6 +1829,13 @@ are enabled.
+ This option is only really useful in a
+ .Cm Match
+ block.
++.It Cm CanonicalMatchUser
++Some password databases allow users to define aliases for their username.
++This directive indicates that
++.Xr sshd 8
++should attempt to first obtain a canonical username from a password database before evaluating a
++.Cm Match User
++conditional block.
+ .It Cm RekeyLimit
+ Specifies the maximum amount of data that may be transmitted or received
+ before the session key is renegotiated, optionally followed by a maximum

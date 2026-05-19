@@ -1,0 +1,12 @@
+diff --color -ruNp a/sshkey.c b/sshkey.c
+--- a/sshkey.c	2025-04-29 11:20:59.484832762 +0200
++++ b/sshkey.c	2025-04-29 11:28:32.349323029 +0200
+@@ -3599,6 +3599,8 @@ translate_libcrypto_error(unsigned long
+ 		}
+ 	case ERR_LIB_ASN1:
+ 		return SSH_ERR_INVALID_FORMAT;
++	case ERR_LIB_OSSL_DECODER:
++		return SSH_ERR_INVALID_FORMAT;
+ 	}
+ 	return SSH_ERR_LIBCRYPTO_ERROR;
+ }

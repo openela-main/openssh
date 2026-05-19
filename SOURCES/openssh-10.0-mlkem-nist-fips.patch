@@ -1,0 +1,503 @@
+diff --git a/compat.c b/compat.c
+index 4e611dc39..b5f4cc685 100644
+--- a/compat.c
++++ b/compat.c
+@@ -36,6 +36,7 @@
+ #include "compat.h"
+ #include "log.h"
+ #include "match.h"
++#include <openssl/fips.h>
+ 
+ /* determine bug flags from SSH protocol banner */
+ void
+@@ -148,8 +149,9 @@ char *
+ compat_kex_proposal(struct ssh *ssh, const char *p)
+ {
+ 	char *cp = NULL, *cp2 = NULL;
++	int mlkem_available = is_mlkem768_available();
+ 
+-	if ((ssh->compat & (SSH_BUG_CURVE25519PAD|SSH_OLD_DHGEX)) == 0)
++	if ((ssh->compat & (SSH_BUG_CURVE25519PAD|SSH_OLD_DHGEX)) == 0 && mlkem_available == 2)
+ 		return xstrdup(p);
+ 	debug2_f("original KEX proposal: %s", p);
+ 	if ((ssh->compat & SSH_BUG_CURVE25519PAD) != 0)
+@@ -164,6 +166,25 @@ compat_kex_proposal(struct ssh *ssh, const char *p)
+ 		free(cp);
+ 		cp = cp2;
+ 	}
++	if (mlkem_available == 2)
++		return cp ? cp : xstrdup(p);
++	if (mlkem_available == 1 && FIPS_mode()) {
++		if ((cp2 = match_filter_denylist(cp ? cp : p,
++		    "mlkem768x25519-sha256")) == NULL)
++			fatal("match_filter_denylist failed");
++		free(cp);
++		cp = cp2;
++	}
++	if (mlkem_available == 0) {
++		if ((cp2 = match_filter_denylist(cp ? cp : p,
++		    "mlkem768x25519-sha256,"
++		    "mlkem768nistp256-sha256,"
++		    "mlkem1024nistp384-sha384")) == NULL)
++			fatal("match_filter_denylist failed");
++		free(cp);
++		cp = cp2;
++	}
++
+ 	if (cp == NULL || *cp == '\0')
+ 		fatal("No supported key exchange algorithms found");
+ 	debug2_f("compat KEX proposal: %s", cp);
+diff --git a/compat.h b/compat.h
+index 2e6db5bf9..b78e55b69 100644
+--- a/compat.h
++++ b/compat.h
+@@ -62,4 +62,5 @@ struct ssh;
+ 
+ void    compat_banner(struct ssh *, const char *);
+ char	*compat_kex_proposal(struct ssh *, const char *);
++int is_mlkem768_available(void);
+ #endif
+diff --git a/kex-names.c b/kex-names.c
+index a728e0b38..9b852e8ab 100644
+--- a/kex-names.c
++++ b/kex-names.c
+@@ -35,6 +35,7 @@
+ #include <openssl/crypto.h>
+ #include <openssl/fips.h>
+ #include <openssl/evp.h>
++#include <openssl/err.h>
+ #endif
+ 
+ #include "kex.h"
+@@ -113,14 +113,27 @@ static const struct kexalg gss_kexalgs[]
+ 	{ NULL, 0, -1, -1},
+ };
+ 
++/*
++ * 0 - unavailable
++ * 1 - available in non-FIPS mode
++ * 2 - available always
++ */
+-static int is_mlkem768_available()
++int is_mlkem768_available()
+ {
+ 	static int is_fetched = -1;
+ 
+ 	if (is_fetched == -1) {
+-		EVP_KEM *mlkem768 = EVP_KEM_fetch(NULL, "mlkem768", NULL);
+-		is_fetched = mlkem768 != NULL ? 1 : 0;
++		EVP_KEM *mlkem768 = NULL;
++
++		ERR_set_mark();
++		mlkem768 = EVP_KEM_fetch(NULL, "mlkem768", NULL);
++		is_fetched = (mlkem768 == NULL) ? 0 : 2;
++		if (is_fetched == 0 && FIPS_mode() == 1) {
++		    mlkem768 = EVP_KEM_fetch(NULL, "mlkem768", "provider=default,-fips");
++		    is_fetched = (mlkem768 == NULL) ? 0 : 1;
++		}
+ 		EVP_KEM_free(mlkem768);
++		ERR_pop_to_mark();
+ 	}
+ 
+ 	return is_fetched;
+@@ -131,13 +148,32 @@ kex_alg_list_internal(char sep, const struct kexalg *algs)
+ 	char *ret = NULL, *tmp;
+ 	size_t nlen, rlen = 0;
+ 	const struct kexalg *k;
++	int x25519mlkem_available = 0, nistmlkem_available = 0;
++
++	/*
++	 * FIPS provider can provide ML-KEMs and then all hybrids are available
++	 * Otherwise only NIST hybrids are available
++	 * */
++	if (FIPS_mode()) {
++	    if (is_mlkem768_available() == 2) {
++	        x25519mlkem_available = 1;
++	        nistmlkem_available = 1;
++	    } else if (is_mlkem768_available() == 1) {
++	        nistmlkem_available = 1;
++	    }
++	} else {
++	    if (is_mlkem768_available() > 0) {
++	        x25519mlkem_available = 1;
++	        nistmlkem_available = 1;
++	    }
++	}
+ 
+ 	for (k = algs; k->name != NULL; k++) {
+-		if ( (strcmp(k->name, KEX_MLKEM768X25519_SHA256) == 0
+-		   || strcmp(k->name, KEX_MLKEM768NISTP256_SHA256) == 0
+-		   || strcmp(k->name, KEX_MLKEM1024NISTP384_SHA384) == 0)
+-			&& !is_mlkem768_available())
++		if (  (strcmp(k->name, KEX_MLKEM768X25519_SHA256) == 0    && x25519mlkem_available == 0)
++		   || (strcmp(k->name, KEX_MLKEM768NISTP256_SHA256) == 0  && nistmlkem_available == 0)
++		   || (strcmp(k->name, KEX_MLKEM1024NISTP384_SHA384) == 0 && nistmlkem_available == 0))
+ 			continue;
++
+ 		if (ret != NULL)
+ 			ret[rlen++] = sep;
+ 		nlen = strlen(k->name);
+@@ -168,12 +204,30 @@ static const struct kexalg *
+ kex_alg_by_name(const char *name)
+ {
+ 	const struct kexalg *k;
++	int x25519mlkem_available = 0, nistmlkem_available = 0;
+ 
+-	if ( (strcmp(name, KEX_MLKEM768X25519_SHA256) == 0
+-	   || strcmp(name, KEX_MLKEM768NISTP256_SHA256) == 0
+-	   || strcmp(name, KEX_MLKEM1024NISTP384_SHA384) == 0)
+-		&& !is_mlkem768_available())
+-	return NULL;
++	/*
++	 * FIPS provider can provide ML-KEMs and then all hybrids are available
++	 * Otherwise only NIST hybrids are available
++	 * */
++	if (FIPS_mode()) {
++	    if (is_mlkem768_available() == 2) {
++	        x25519mlkem_available = 1;
++	        nistmlkem_available = 1;
++	    } else if (is_mlkem768_available() == 1) {
++	        nistmlkem_available = 1;
++	    }
++	} else {
++	    if (is_mlkem768_available() > 0) {
++	        x25519mlkem_available = 1;
++	        nistmlkem_available = 1;
++	    }
++	}
++
++	if (  (strcmp(name, KEX_MLKEM768X25519_SHA256) == 0    && x25519mlkem_available == 0)
++	   || (strcmp(name, KEX_MLKEM768NISTP256_SHA256) == 0  && nistmlkem_available == 0)
++	   || (strcmp(name, KEX_MLKEM1024NISTP384_SHA384) == 0 && nistmlkem_available == 0))
++	   return NULL;
+ 
+ 	for (k = kexalgs; k->name != NULL; k++) {
+ 		if (strcmp(k->name, name) == 0)
+@@ -292,8 +295,16 @@ kex_names_valid(const char *names)
+ 	for ((p = strsep(&cp, ",")); p && *p != '\0';
+ 	    (p = strsep(&cp, ","))) {
+ 		if (kex_alg_by_name(p) == NULL) {
+-			if (FIPS_mode())
+-				error("\"%.100s\" is not allowed in FIPS mode", p);
++			if (FIPS_mode()) {
++				if ((strcmp(p, KEX_MLKEM768X25519_SHA256) == 0)
++				    || (strcmp(p, KEX_MLKEM768NISTP256_SHA256) == 0)
++				    || (strcmp(p, KEX_MLKEM1024NISTP384_SHA384) == 0)) {
++					debug("\"%.100s\" is not allowed in FIPS mode", p);
++					continue;
++				}
++				else
++					error("\"%.100s\" is not allowed in FIPS mode", p);
++			}
+ 			else
+ 				error("Unsupported KEX algorithm \"%.100s\"", p);
+ 			free(s);
+diff --git a/kexgen.c b/kexgen.c
+index 6e910f84f..4bc3f9faf 100644
+--- a/kexgen.c
++++ b/kexgen.c
+@@ -133,27 +133,23 @@ kex_gen_client(struct ssh *ssh)
+ 		break;
+ 	case KEX_KEM_MLKEM768X25519_SHA256:
+ 		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem768x25519 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
++		    EVP_KEM *mlkem = EVP_KEM_fetch(NULL, "mlkem768", NULL);
++		    if (mlkem == NULL) {
++		        logit_f("Key exchange type mlkem768x25519 is not allowed in FIPS mode");
++		        r = SSH_ERR_INVALID_ARGUMENT;
++		    } else {
++			EVP_KEM_free(mlkem);
++		        r = kex_kem_mlkem768x25519_keypair(kex);
++		    }
+ 		} else {
+ 		    r = kex_kem_mlkem768x25519_keypair(kex);
+ 		}
+ 		break;
+ 	case KEX_KEM_MLKEM768NISTP256_SHA256:
+-		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem768nistp256 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
+-		} else {
+ 		    r = kex_kem_mlkem768nistp256_keypair(kex);
+-		}
+ 		break;
+ 	case KEX_KEM_MLKEM1024NISTP384_SHA384:
+-		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem1024nistp384 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
+-		} else {
+ 		    r = kex_kem_mlkem1024nistp384_keypair(kex);
+-		}
+ 		break;
+ 	default:
+ 		r = SSH_ERR_INVALID_ARGUMENT;
+@@ -239,30 +235,27 @@ input_kex_gen_reply(int type, u_int32_t seq, struct ssh *ssh)
+ 		break;
+ 	case KEX_KEM_MLKEM768X25519_SHA256:
+ 		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem768x25519 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
++		    EVP_KEM *mlkem = EVP_KEM_fetch(NULL, "mlkem768", NULL);
++		    if (mlkem == NULL) {
++		        logit_f("Key exchange type mlkem768x25519 is not allowed in FIPS mode");
++		        r = SSH_ERR_INVALID_ARGUMENT;
++		    } else {
++			EVP_KEM_free(mlkem);
++		        r = kex_kem_mlkem768x25519_dec(kex, server_blob,
++		            &shared_secret);
++		    }
+ 		} else {
+ 		    r = kex_kem_mlkem768x25519_dec(kex, server_blob,
+ 		        &shared_secret);
+ 		}
+ 		break;
+ 	case KEX_KEM_MLKEM768NISTP256_SHA256:
+-		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem768nistp256 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
+-		} else {
+ 		    r = kex_kem_mlkem768nistp256_dec(kex, server_blob,
+ 		        &shared_secret);
+-		}
+ 		break;
+ 	case KEX_KEM_MLKEM1024NISTP384_SHA384:
+-		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem1024nistp384 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
+-		} else {
+ 		    r = kex_kem_mlkem1024nistp384_dec(kex, server_blob,
+ 		        &shared_secret);
+-		}
+ 		break;
+ 	default:
+ 		r = SSH_ERR_INVALID_ARGUMENT;
+@@ -398,30 +391,27 @@ input_kex_gen_init(int type, u_int32_t seq, struct ssh *ssh)
+ 		break;
+ 	case KEX_KEM_MLKEM768X25519_SHA256:
+ 		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem768x25519 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
++		    EVP_KEM *mlkem = EVP_KEM_fetch(NULL, "mlkem768", NULL);
++		    if (mlkem == NULL) {
++		        logit_f("Key exchange type mlkem768x25519 is not allowed in FIPS mode");
++		        r = SSH_ERR_INVALID_ARGUMENT;
++		    } else {
++			EVP_KEM_free(mlkem);
++		        r = kex_kem_mlkem768x25519_enc(kex, client_pubkey,
++		            &server_pubkey, &shared_secret);
++		    }
+ 		} else {
+ 		    r = kex_kem_mlkem768x25519_enc(kex, client_pubkey,
+ 		        &server_pubkey, &shared_secret);
+ 		}
+ 		break;
+ 	case KEX_KEM_MLKEM768NISTP256_SHA256:
+-		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem768nistp256 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
+-		} else {
+ 		    r = kex_kem_mlkem768nistp256_enc(kex, client_pubkey,
+ 		        &server_pubkey, &shared_secret);
+-		}
+ 		break;
+ 	case KEX_KEM_MLKEM1024NISTP384_SHA384:
+-		if (FIPS_mode()) {
+-		    logit_f("Key exchange type mlkem1024nistp384 is not allowed in FIPS mode");
+-		    r = SSH_ERR_INVALID_ARGUMENT;
+-		} else {
+ 		    r = kex_kem_mlkem1024nistp384_enc(kex, client_pubkey,
+ 		        &server_pubkey, &shared_secret);
+-		}
+ 		break;
+ 	default:
+ 		r = SSH_ERR_INVALID_ARGUMENT;
+diff --git a/kexmlkem768x25519.c b/kexmlkem768x25519.c
+index 463d18771..e32edb077 100644
+--- a/kexmlkem768x25519.c
++++ b/kexmlkem768x25519.c
+@@ -48,10 +48,15 @@
+ #ifdef USE_MLKEM768X25519
+ 
+ #include "libcrux_mlkem768_sha3.h"
++#include <openssl/bn.h>
++#include <openssl/ec.h>
+ #include <openssl/err.h>
+ #include <openssl/evp.h>
++#include <openssl/fips.h>
+ #include <stdio.h>
+ 
++#define FIPS_FALLBACK_PROPQ "provider=default,-fips"
++
+ static int
+ mlkem_keypair_gen(const char *algname, unsigned char *pubkeybuf, size_t pubkey_size,
+ 	          unsigned char *privkeybuf, size_t privkey_size)
+@@ -62,6 +67,14 @@ mlkem_keypair_gen(const char *algname, unsigned char *pubkeybuf, size_t pubkey_s
+     size_t got_pub_size = pubkey_size, got_priv_size = privkey_size;
+ 
+     ctx = EVP_PKEY_CTX_new_from_name(NULL, algname, NULL);
++
++    if (ctx == NULL && FIPS_mode()) {
++	/* We have filtered x25519 + ML-KEM in FIPS mode earlier
++	 * so if we are in FIPS mode and ML-KEM is not available with default propq,
++	 * we can fetch it from the default provider */
++        ctx = EVP_PKEY_CTX_new_from_name(NULL, algname, FIPS_FALLBACK_PROPQ);
++    }
++
+     if (ctx == NULL) {
+ 	ret = SSH_ERR_LIBCRYPTO_ERROR;
+ 	goto err;
+@@ -121,6 +134,7 @@ mlkem_encap_secret(const char *mlkem_alg, const u_char *pubkeybuf, u_char *secre
+     EVP_PKEY_CTX *ctx = NULL;
+     int r = SSH_ERR_INTERNAL_ERROR;
+     size_t outlen, expected_outlen, publen, secretlen = crypto_kem_mlkem768_BYTES;
++    int fips_fallback = 0;
+ 
+     if (strcmp(mlkem_alg, "mlkem768") == 0) {
+ 	    outlen = crypto_kem_mlkem768_CIPHERTEXTBYTES;
+@@ -135,12 +149,17 @@ mlkem_encap_secret(const char *mlkem_alg, const u_char *pubkeybuf, u_char *secre
+ 
+     pkey = EVP_PKEY_new_raw_public_key_ex(NULL, mlkem_alg, NULL,
+ 		    pubkeybuf, publen);
++    if (pkey == NULL && FIPS_mode()) {
++        pkey = EVP_PKEY_new_raw_public_key_ex(NULL, mlkem_alg, FIPS_FALLBACK_PROPQ,
++		    pubkeybuf, publen);
++	fips_fallback = 1;
++    }
+     if (pkey == NULL) {
+ 	r = SSH_ERR_LIBCRYPTO_ERROR;
+ 	goto err;
+     }
+ 
+-    ctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, NULL);
++    ctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, fips_fallback ? FIPS_FALLBACK_PROPQ : NULL);
+     if (ctx == NULL
+ 	|| EVP_PKEY_encapsulate_init(ctx, NULL) <= 0
+         || EVP_PKEY_encapsulate(ctx, out, &expected_outlen, secret, &secretlen) <= 0
+@@ -182,15 +201,21 @@ mlkem_decap_secret(const char *algname,
+     EVP_PKEY_CTX *ctx = NULL;
+     int r = SSH_ERR_INTERNAL_ERROR;
+     size_t secretlen = crypto_kem_mlkem768_BYTES;
++    int fips_fallback = 0;
+ 
+     pkey = EVP_PKEY_new_raw_private_key_ex(NULL, algname,
+ 		    NULL, privkeybuf, privkey_len);
++    if (pkey == NULL && FIPS_mode()) {
++        pkey = EVP_PKEY_new_raw_private_key_ex(NULL, algname,
++		    FIPS_FALLBACK_PROPQ, privkeybuf, privkey_len);
++	fips_fallback = 1;
++    }
+     if (pkey == NULL) {
+ 	r = SSH_ERR_LIBCRYPTO_ERROR;
+ 	goto err;
+     }
+ 
+-    ctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, NULL);
++    ctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, fips_fallback ? FIPS_FALLBACK_PROPQ : NULL);
+     if (ctx == NULL
+ 	|| EVP_PKEY_decapsulate_init(ctx, NULL) <= 0
+         || EVP_PKEY_decapsulate(ctx, secret, &secretlen, wrapped, wrapped_len) <= 0
+@@ -744,6 +769,48 @@ nist_pkey_keygen(size_t pub_key_len)
+ 	return pkey;
+ }
+ 
++static size_t decompress_pub_key(void *pub, size_t compressed_len, size_t decompressed_len)
++{
++    EC_GROUP *group = NULL;
++    EC_POINT *point = NULL;
++    BN_CTX *ctx = NULL;
++    size_t len = 0;
++    int group_nid = NID_undef;
++
++    switch (compressed_len) {
++    case NIST_P256_COMPRESSED_LEN:
++         group_nid = NID_X9_62_prime256v1;
++       break;
++    case NIST_P384_COMPRESSED_LEN:
++         group_nid = NID_secp384r1;
++       break;
++    default:
++       return 0;
++       break;
++    }
++
++    ctx = BN_CTX_new();
++    group = EC_GROUP_new_by_curve_name(group_nid);
++    if (ctx == NULL || group == NULL)
++        goto err;
++
++    point = EC_POINT_new(group);
++    if (point == NULL)
++        goto err;
++
++    if (!EC_POINT_oct2point(group, point, pub, compressed_len, ctx))
++        goto err;
++
++    len = EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED, pub, decompressed_len, ctx);
++
++err:
++    EC_POINT_free(point);
++    EC_GROUP_free(group);
++    BN_CTX_free(ctx);
++
++    return len;
++}
++
+ static int
+ get_uncompressed_ec_pubkey(EVP_PKEY *pkey, unsigned char *buf, size_t buf_len)
+ {
+@@ -757,16 +824,25 @@ get_uncompressed_ec_pubkey(EVP_PKEY *pkey, unsigned char *buf, size_t buf_len)
+ 
+     if (EVP_PKEY_set_params(pkey, params) <= 0
+ 	    || EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY,
+-                                          NULL, 0, &required_len) <= 0) {
++                                          buf, buf_len, &required_len) <= 0) {
+         return SSH_ERR_LIBCRYPTO_ERROR;
+     }
+ 
+-    if (required_len != buf_len)
+-	return SSH_ERR_INTERNAL_ERROR;
+-
+-    if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY,
+-                                          buf, required_len, &out_len) <= 0) {
+-        return SSH_ERR_LIBCRYPTO_ERROR;
++    if (required_len != buf_len) {
++        /* Red Hat certified FIPS provider ignores OSSL_PKEY_PARAM_EC_POINT_CONVERSION_FORMAT
++	 * We may have to perform the conversion manually */
++        if (len2curve_name(required_len) == len2curve_name(buf_len)) {
++	    out_len = decompress_pub_key(buf, required_len, buf_len);
++	    if (out_len != buf_len) {
++	        debug_f("Error decompressing the compressed public key");
++	        return SSH_ERR_LIBCRYPTO_ERROR;
++	    } else {
++		return 0;
++	    }
++	} else {
++	    debug_f("Unexpected length of uncompressed public key: expected %d, got %d", buf_len, required_len);
++	    return SSH_ERR_LIBCRYPTO_ERROR;
++	}
+     }
+ 
+     return 0;
+diff --git a/myproposal.h b/myproposal.h
+index 3e0ec6826..007347fc3 100644
+--- a/myproposal.h
++++ b/myproposal.h
+@@ -26,6 +26,8 @@
+ 	"sntrup761x25519-sha512," \
+ 	"sntrup761x25519-sha512@openssh.com," \
+ 	"mlkem768x25519-sha256," \
++	"mlkem768nistp256-sha256," \
++	"mlkem1024nistp384-sha384," \
+ 	"curve25519-sha256," \
+ 	"curve25519-sha256@libssh.org," \
+ 	"ecdh-sha2-nistp256," \
+@@ -97,6 +99,8 @@
+ 	"aes192-cbc,aes256-cbc,rijndael-cbc@lysator.liu.se," \
+ 	"aes128-gcm@openssh.com,aes256-gcm@openssh.com"
+ #define KEX_DEFAULT_KEX_FIPS		\
++	"mlkem768nistp256-sha256," \
++	"mlkem1024nistp384-sha384," \
+ 	"ecdh-sha2-nistp256," \
+ 	"ecdh-sha2-nistp384," \
+ 	"ecdh-sha2-nistp521," \

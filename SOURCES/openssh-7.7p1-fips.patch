@@ -268,9 +268,24 @@ diff -up openssh-8.6p1/ssh.c.fips openssh-8.6p1/ssh.c
  	/* Expand SecurityKeyProvider if it refers to an environment variable */
  	if (options.sk_provider != NULL && *options.sk_provider == '$' &&
  	    strlen(options.sk_provider) > 1) {
-diff -up openssh-8.6p1/sshconnect2.c.fips openssh-8.6p1/sshconnect2.c
---- openssh-8.6p1/sshconnect2.c.fips	2021-05-06 12:08:36.485926777 +0200
-+++ openssh-8.6p1/sshconnect2.c	2021-05-06 12:08:36.501926900 +0200
+diff -up openssh-9.9p1/ssh-gss.h.xxx openssh-9.9p1/ssh-gss.h
+--- openssh-9.9p1/ssh-gss.h.xxx	2025-08-04 15:02:15.895341244 +0200
++++ openssh-9.9p1/ssh-gss.h	2025-08-04 15:02:54.826304548 +0200
+@@ -94,6 +94,11 @@ extern char **k5users_allowed_cmds;
+ 	KEX_GSS_GRP14_SHA1_ID "," \
+ 	KEX_GSS_GEX_SHA1_ID
+ 
++#define        GSS_KEX_DEFAULT_KEX_FIPS \
++	KEX_GSS_GRP14_SHA256_ID "," \
++	KEX_GSS_GRP16_SHA512_ID	"," \
++	KEX_GSS_NISTP256_SHA256_ID
++
+ #include "digest.h" /* SSH_DIGEST_MAX_LENGTH */
+ 
+ typedef struct {
+diff -up openssh-9.9p1/sshconnect2.c.xxx openssh-9.9p1/sshconnect2.c
+--- openssh-9.9p1/sshconnect2.c.xxx	2025-08-04 14:58:08.908229826 +0200
++++ openssh-9.9p1/sshconnect2.c	2025-08-04 15:07:59.942477440 +0200
 @@ -45,6 +45,8 @@
  #include <vis.h>
  #endif
@@ -280,75 +295,27 @@ diff -up openssh-8.6p1/sshconnect2.c.fips openssh-8.6p1/sshconnect2.c
  #include "openbsd-compat/sys-queue.h"
  
  #include "xmalloc.h"
-@@ -269,36 +271,41 @@ ssh_kex2(struct ssh *ssh, char *host, st
+@@ -274,6 +277,9 @@ ssh_kex2(struct ssh *ssh, char *host, st
  
  #if defined(GSSAPI) && defined(WITH_OPENSSL)
  	if (options.gss_keyex) {
--		/* Add the GSSAPI mechanisms currently supported on this
--		 * client to the key exchange algorithm proposal */
--		orig = myproposal[PROPOSAL_KEX_ALGS];
--
--		if (options.gss_server_identity) {
--			gss_host = xstrdup(options.gss_server_identity);
--		} else if (options.gss_trust_dns) {
--			gss_host = remote_hostname(ssh);
--			/* Fall back to specified host if we are using proxy command
--			 * and can not use DNS on that socket */
--			if (strcmp(gss_host, "UNKNOWN") == 0) {
--				free(gss_host);
-+		if (FIPS_mode()) {
-+			logit("Disabling GSSAPIKeyExchange. Not usable in FIPS mode");
-+			options.gss_keyex = 0;
-+		} else {
-+			/* Add the GSSAPI mechanisms currently supported on this
-+			 * client to the key exchange algorithm proposal */
-+			orig = myproposal[PROPOSAL_KEX_ALGS];
++		char * gss_kex_filtered = FIPS_mode() ?
++			 match_filter_allowlist(options.gss_kex_algorithms, GSS_KEX_DEFAULT_KEX_FIPS) : xstrdup(options.gss_kex_algorithms);
 +
-+			if (options.gss_server_identity) {
-+				gss_host = xstrdup(options.gss_server_identity);
-+			} else if (options.gss_trust_dns) {
-+				gss_host = remote_hostname(ssh);
-+				/* Fall back to specified host if we are using proxy command
-+				 * and can not use DNS on that socket */
-+				if (strcmp(gss_host, "UNKNOWN") == 0) {
-+					free(gss_host);
-+					gss_host = xstrdup(host);
-+				}
-+			} else {
- 				gss_host = xstrdup(host);
- 			}
--		} else {
--			gss_host = xstrdup(host);
--		}
- 
--		gss = ssh_gssapi_client_mechanisms(gss_host,
--		    options.gss_client_identity, options.gss_kex_algorithms);
--		if (gss) {
--			debug("Offering GSSAPI proposal: %s", gss);
--			xasprintf(&myproposal[PROPOSAL_KEX_ALGS],
--			    "%s,%s", gss, orig);
--
--			/* If we've got GSSAPI algorithms, then we also support the
--			 * 'null' hostkey, as a last resort */
--			orig = myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS];
--			xasprintf(&myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS],
--			    "%s,null", orig);
-+			gss = ssh_gssapi_client_mechanisms(gss_host,
-+			    options.gss_client_identity, options.gss_kex_algorithms);
-+			if (gss) {
-+				debug("Offering GSSAPI proposal: %s", gss);
-+				xasprintf(&myproposal[PROPOSAL_KEX_ALGS],
-+				    "%s,%s", gss, orig);
-+
-+				/* If we've got GSSAPI algorithms, then we also support the
-+				 * 'null' hostkey, as a last resort */
-+				orig = myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS];
-+				xasprintf(&myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS],
-+				    "%s,null", orig);
-+			}
+ 		/* Add the GSSAPI mechanisms currently supported on this
+ 		 * client to the key exchange algorithm proposal */
+ 		orig = myproposal[PROPOSAL_KEX_ALGS];
+@@ -293,7 +299,9 @@ ssh_kex2(struct ssh *ssh, char *host, st
  		}
- 	}
- #endif
+ 
+ 		gss = ssh_gssapi_client_mechanisms(gss_host,
+-		    options.gss_client_identity, options.gss_kex_algorithms);
++		    options.gss_client_identity, gss_kex_filtered);
++		free(gss_kex_filtered);
++
+ 		if (gss) {
+ 			debug("Offering GSSAPI proposal: %s", gss);
+ 			xasprintf(&myproposal[PROPOSAL_KEX_ALGS],
 diff -up openssh-8.6p1/sshd.c.fips openssh-8.6p1/sshd.c
 --- openssh-8.6p1/sshd.c.fips	2021-05-06 12:08:36.493926838 +0200
 +++ openssh-8.6p1/sshd.c	2021-05-06 12:13:56.501492639 +0200
@@ -393,36 +360,6 @@ diff -up openssh-8.6p1/sshd.c.fips openssh-8.6p1/sshd.c
  	/*
  	 * Chdir to the root directory so that the current disk can be
  	 * unmounted if desired.
-diff -up openssh-8.6p1/sshd-session.c.fips openssh-8.6p1/sshd-session.c
---- a/sshd-session.c.fips	2021-05-06 12:08:36.493926838 +0200
-+++ b/sshd-session.c	2021-05-06 12:13:56.501492639 +0200
-@@ -78,6 +79,7 @@
- #include <openssl/bn.h>
- #include <openssl/evp.h>
- #include <openssl/rand.h>
-+#include <openssl/fips.h>
- #include "openbsd-compat/openssl-compat.h"
- #endif
- 
-@@ -2506,10 +2513,14 @@ do_ssh2_kex(struct ssh *ssh)
- 	if (strlen(myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS]) == 0)
- 		orig = NULL;
- 
--	if (options.gss_keyex)
--		gss = ssh_gssapi_server_mechanisms();
--	else
--		gss = NULL;
-+	if (options.gss_keyex) {
-+		if (FIPS_mode()) {
-+			logit("Disabling GSSAPIKeyExchange. Not usable in FIPS mode");
-+			options.gss_keyex = 0;
-+		} else {
-+			gss = ssh_gssapi_server_mechanisms();
-+		}
-+	}
- 
- 	if (gss && orig)
- 		xasprintf(&newstr, "%s,%s", gss, orig);
 diff -up openssh-8.6p1/sshkey.c.fips openssh-8.6p1/sshkey.c
 --- openssh-8.6p1/sshkey.c.fips	2021-05-06 12:08:36.493926838 +0200
 +++ openssh-8.6p1/sshkey.c	2021-05-06 12:08:36.502926908 +0200

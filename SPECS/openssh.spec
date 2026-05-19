@@ -43,7 +43,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: 14%{?dist}
+Release: 23%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -214,23 +214,33 @@ Patch1025: openssh-9.9p1-non-supported-keys-err-msg.patch
 Patch1026: openssh-9.9p1-bad-hostkey.patch
 # https://github.com/openssh/openssh-portable/pull/500
 Patch1027: openssh-9.9p1-support-authentication-indicators-in-GSSAPI.patch
+#
+Patch1028: openssh-9.9p1-fips-gss.patch
+#upstream 6432b9f6a216d0f5fb43df500e9bc30bebb3f58b
+#upstream 4f14ca8633a2c8c0a1a19165663421f0ab32f6ab
+Patch1029: openssh-9.9p1-scp-traversing.patch
+Patch1030: openssh-9.9p1-canonical-match-user.patch
+Patch1031: openssh-10.0-mlkem-nist.patch
 # upstream 35d5917652106aede47621bb3f64044604164043
-Patch1028: openssh-9.9p1-reject-cntrl-chars-in-username.patch
+Patch1032: openssh-9.9p1-reject-cntrl-chars-in-username.patch
 # upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
-Patch1029: openssh-9.9p1-reject-null-char-in-url-string.patch
+Patch1033: openssh-9.9p1-reject-null-char-in-url-string.patch
+Patch1034: openssh-9.9p1-sshd-no-delegate-credentials.patch
+Patch1035: openssh-10.0-mlkem-nist-fips.patch
 # upstream 487e8ac146f7d6616f65c125d5edb210519b833a
-Patch1030: openssh-9.9p1-scp-clear-setuid.patch
+Patch1036: openssh-9.9p1-scp-clear-setuid.patch
 # upstream c805b97b67c774e0bf922ffb29dfbcda9d7b5add
-Patch1031: openssh-9.9p1-mux-askpass-check.patch
+Patch1037: openssh-9.9p1-mux-askpass-check.patch
 # upstream fd1c7e131f331942d20f42f31e79912d570081fa
-Patch1032: openssh-9.9p1-ecdsa-incomplete-application.patch
+Patch1038: openssh-9.9p1-ecdsa-incomplete-application.patch
 # upstream fd1c7e131f331942d20f42f31e79912d570081fa
-Patch1033: openssh-9.9p1-authorized-keys-principles-option.patch
+Patch1039: openssh-9.9p1-authorized-keys-principles-option.patch
 # upstream 76685c9b09a66435cd2ad8373246adf1c53976d3
 # upstream 0a0ef4515361143cad21afa072319823854c1cf6
 # upstream 607bd871ec029e9aa22e632a22547250f3cae223
 # upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
-Patch1034: openssh-9.9p1-proxyjump-username-validity-checks.patch
+Patch1040: openssh-9.9p1-proxyjump-username-validity-checks.patch
+
 
 License: BSD-3-Clause AND BSD-2-Clause AND ISC AND SSH-OpenSSH AND ssh-keyscan AND sprintf AND LicenseRef-Fedora-Public-Domain AND X11-distribute-modifications-variant
 Requires: /sbin/nologin
@@ -423,13 +433,19 @@ gpgv2 --quiet --keyring %{SOURCE3} %{SOURCE1} %{SOURCE0}
 %patch -P 1025 -p1 -b .non-supported-keys-err-msg
 %patch -P 1026 -p1 -b .bad-hostkey
 %patch -P 1027 -p1 -b .gss-indicators
-%patch -P 1028 -p1 -b .reject-cntrl-chars-in-username
-%patch -P 1029 -p1 -b .reject-null-char-in-url-string
-%patch -P 1030 -p1 -b .scp-clear-setuid
-%patch -P 1031 -p1 -b .mux-askpass-check
-%patch -P 1032 -p1 -b .ecdsa-incomplete-application
-%patch -P 1033 -p1 -b .authorized-keys-principles-option
-%patch -P 1034 -p1 -b .proxyjump-username-validity-checks
+%patch -P 1028 -p1 -b .gss-fips
+%patch -P 1029 -p1 -b .scp-traversing
+%patch -P 1030 -p1 -b .canonical-match-user
+%patch -P 1031 -p1 -b .mlkem-nist
+%patch -P 1032 -p1 -b .reject-cntrl-chars-in-username
+%patch -P 1033 -p1 -b .reject-null-char-in-url-string
+%patch -P 1034 -p1 -b .sshd-nogsscreds
+%patch -P 1035 -p1 -b .mlkem-nist-fips
+%patch -P 1036 -p1 -b .scp-clear-setuid
+%patch -P 1037 -p1 -b .mux-askpass-check
+%patch -P 1038 -p1 -b .ecdsa-incomplete-application
+%patch -P 1039 -p1 -b .authorized-keys-principles-option
+%patch -P 1040 -p1 -b .proxyjump-username-validity-checks
 
 %patch -P 100 -p1 -b .coverity
 
@@ -710,32 +726,69 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
-* Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-14
+* Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-23
 - CVE-2026-35385: Fix privilege escalation via scp legacy protocol
   when not in preserving file mode
-  Resolves: RHEL-164738
+  Resolves: RHEL-164739
 - CVE-2026-35388: Add connection multiplexing confirmation for proxy-mode
   multiplexing sessions
-  Resolves: RHEL-166237
+  Resolves: RHEL-166238
 - CVE-2026-35387: Fix incomplete application of PubkeyAcceptedAlgorithms
   and HostbasedAcceptedAlgorithms with regard to ECDSA keys
-  Resolves: RHEL-166221
+  Resolves: RHEL-166222
 - CVE-2026-35414: Fix mishandling of authorized_keys principals option
-  Resolves: RHEL-166189
+  Resolves: RHEL-166190
 - CVE-2026-35386: Add validation rules to usernames and hostnames
   set for ProxyJump/-J on the commandline
-  Resolves: RHEL-166205
+  Resolves: RHEL-166206
 
-* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-13
+* Thu Mar 26 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-22
+- Version bump
+
+* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-21
 - CVE-2026-3497: Fix information disclosure or denial of service due
   to uninitialized variables in gssapi-keyex
-  Resolves: RHEL-155811
+  Resolves: RHEL-155812
 
-* Mon Dec 08 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-12
+* Wed Feb 25 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-20
+- Provide a way to skip unsupported ML-KEM hybrid algorithms in FIPS mode
+  Resolves: RHEL-151579
+
+* Thu Dec 11 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-19
+- Support of hybrid MLKEM key exchange methods in FIPS mode
+  Resolves: RHEL-125929
+
+* Fri Dec 05 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-18
+- Adding a mechanism to disable GSSAPIDelegateCredentials in sshd_config
+  Resolves: RHEL-5281
+
+* Fri Dec 05 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-17
 - CVE-2025-61984: Reject usernames with control characters
-  Resolves: RHEL-128397
+  Resolves: RHEL-128399
 - CVE-2025-61985: Reject URL-strings with NULL characters
-  Resolves: RHEL-128387
+  Resolves: RHEL-128388
+
+* Mon Nov 03 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-16
+- Implement mlkem768nistp256-sha256 and mlkem1024nistp384-sha384 KEX methods
+  Resolves: RHEL-70824
+
+* Mon Oct 27 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-15
+- Fix implicit destination path selection when source path ends with ".."
+  Resolves: RHEL-118406
+- Canonicalize username when matching a user
+  Resolves: RHEL-101440
+
+* Mon Sep 15 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-14
+- Relax GSS Kex restriction in FIPS mode
+  Resolves: RHEL-91181
+
+* Mon Sep 01 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-13
+- Allow non-cryptographical use of MD5 in GSS Kex in FIPS mode
+  Related: RHEL-91181
+
+* Mon Aug 04 2025 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-12
+- Relax GSS Kex restriction in FIPS mode
+  Resolves: RHEL-91181
 
 * Fri Jul 18 2025 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-11
 - Move the redhat help message to debug1 log level

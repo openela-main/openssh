@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 9.9p1
-%global openssh_rel 6
+%global openssh_rel 7
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 7
 
@@ -245,6 +245,19 @@ Patch1037: openssh-9.9p1-reject-cntrl-chars-in-username.patch
 # upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
 Patch1038: openssh-9.9p1-reject-null-char-in-url-string.patch
 Patch1039: openssh-9.9p1-compat-mlkem.patch
+# upstream 487e8ac146f7d6616f65c125d5edb210519b833a
+Patch1040: openssh-9.9p1-scp-clear-setuid.patch
+# upstream c805b97b67c774e0bf922ffb29dfbcda9d7b5add
+Patch1041: openssh-9.9p1-mux-askpass-check.patch
+# upstream fd1c7e131f331942d20f42f31e79912d570081fa
+Patch1042: openssh-9.9p1-ecdsa-incomplete-application.patch
+# upstream fd1c7e131f331942d20f42f31e79912d570081fa
+Patch1043: openssh-9.9p1-authorized-keys-principles-option.patch
+# upstream 76685c9b09a66435cd2ad8373246adf1c53976d3
+# upstream 0a0ef4515361143cad21afa072319823854c1cf6
+# upstream 607bd871ec029e9aa22e632a22547250f3cae223
+# upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
+Patch1044: openssh-9.9p1-proxyjump-username-validity-checks.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -460,6 +473,11 @@ popd
 %patch1037 -p1 -b .reject-cntrl-chars-in-username
 %patch1038 -p1 -b .reject-null-char-in-url-string
 %patch1039 -p1 -b .skip-mlkem-when-na
+%patch1040 -p1 -b .scp-clear-setuid
+%patch1041 -p1 -b .mux-askpass-check
+%patch1042 -p1 -b .ecdsa-incomplete-application
+%patch1043 -p1 -b .authorized-keys-principles-option
+%patch1044 -p1 -b .proxyjump-username-validity-checks
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -748,6 +766,22 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-7
+- CVE-2026-35385: Fix privilege escalation via scp legacy protocol
+  when not in preserving file mode
+  Resolves: RHEL-164753
+- CVE-2026-35388: Add connection multiplexing confirmation for proxy-mode
+  multiplexing sessions
+  Resolves: RHEL-166250
+- CVE-2026-35387: Fix incomplete application of PubkeyAcceptedAlgorithms
+  and HostbasedAcceptedAlgorithms with regard to ECDSA keys
+  Resolves: RHEL-166234
+- CVE-2026-35414: Fix mishandling of authorized_keys principals option
+  Resolves: RHEL-166202
+- CVE-2026-35386: Add validation rules to usernames and hostnames
+  set for ProxyJump/-J on the commandline
+  Resolves: RHEL-166218
+
 * Thu Mar 26 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-6
 - Version bump
 

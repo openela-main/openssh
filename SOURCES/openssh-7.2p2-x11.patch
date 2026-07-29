@@ -30,7 +30,7 @@ diff -up openssh-7.2p2/channels.c.x11 openssh-7.2p2/channels.c
  	return -1;
  }
  
-@@ -4012,8 +4015,18 @@ static int
+@@ -4668,8 +4671,19 @@ static int
  connect_local_xsocket(u_int dnr)
  {
  	char buf[1024];
@@ -39,10 +39,11 @@ diff -up openssh-7.2p2/channels.c.x11 openssh-7.2p2/channels.c
 +	int len, ret;
 +	len = snprintf(buf + 1, sizeof (buf) - 1, _PATH_UNIX_X, dnr);
 +#ifdef linux
-+	/* try abstract socket first */
-+	buf[0] = '\0';
-+	if ((ret = connect_local_xsocket_path(buf, len + 1)) >= 0)
-+		return ret;
++	if (getenv("SSH_INSECURE_ABSTRACT_SOCKET_ENABLED") != NULL) {
++		buf[0] = '\0';
++		if ((ret = connect_local_xsocket_path(buf, len + 1)) >= 0)
++			return ret;
++	}
 +#endif
 +	if ((ret = connect_local_xsocket_path(buf + 1, len)) >= 0)
 +		return ret;

@@ -66,7 +66,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.0p1
-%global openssh_rel 29
+%global openssh_rel 30
 %global pam_ssh_agent_ver 0.10.3
 %global pam_ssh_agent_rel 7
 
@@ -854,6 +854,14 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
+* Mon Jun 29 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.0p1-30
+- CVE-2026-55653: Fix double free in openssh DH-GEX client path during
+  FIPS known-group validation that leads to client-side denial of service
+  Resolves: RHEL-185775
+- CVE-2026-55655: Fix MITM of X11 forwarding via abstract UNIX socket
+  pre-binding
+  Resolves: RHEL-185855
+
 * Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.0p1-29
 - CVE-2026-35385: Fix privilege escalation via scp legacy protocol
   when not in preserving file mode

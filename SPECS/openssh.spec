@@ -43,7 +43,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: 23%{?dist}
+Release: 25%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -240,6 +240,10 @@ Patch1039: openssh-9.9p1-authorized-keys-principles-option.patch
 # upstream 607bd871ec029e9aa22e632a22547250f3cae223
 # upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
 Patch1040: openssh-9.9p1-proxyjump-username-validity-checks.patch
+# upstream 36480181fa22f98e180b4f9e10203480c0346c78
+Patch1041: openssh-9.9p1-scp-remote-glob.patch
+# upstream e8bdfb151a356d0171fea4194dd205fbb252be23
+Patch1042: openssh-9.9p1-cve-2026-60002.patch
 
 
 License: BSD-3-Clause AND BSD-2-Clause AND ISC AND SSH-OpenSSH AND ssh-keyscan AND sprintf AND LicenseRef-Fedora-Public-Domain AND X11-distribute-modifications-variant
@@ -446,6 +450,8 @@ gpgv2 --quiet --keyring %{SOURCE3} %{SOURCE1} %{SOURCE0}
 %patch -P 1038 -p1 -b .ecdsa-incomplete-application
 %patch -P 1039 -p1 -b .authorized-keys-principles-option
 %patch -P 1040 -p1 -b .proxyjump-username-validity-checks
+%patch -P 1041 -p1 -b .scp-remote-glob
+%patch -P 1042 -p1 -b .cve-2026-60002
 
 %patch -P 100 -p1 -b .coverity
 
@@ -726,6 +732,25 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
+* Tue Jul 14 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-25
+- CVE-2026-59996: Fix remote glob result of ".." causing files to be placed
+  in unintended parent directories when scp performs remote-to-remote copy
+  via the local host
+  Resolves: RHEL-193170
+- CVE-2026-60002: Fix use-after-free in cached hostkey during key re-exchange
+  Resolves: RHEL-193016
+
+* Tue Jun 30 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-24
+- CVE-2026-55653: Fix double free in openssh DH-GEX client path during
+  FIPS known-group validation that leads to client-side denial of service
+  Resolves: RHEL-186435
+- CVE-2026-55654: Fix heap out-of-bounds read during GSSAPI indicator
+  cleanup due to missing NULL terminator
+  Resolves: RHEL-185826
+- CVE-2026-55655: Fix MITM of X11 forwarding via abstract UNIX socket
+  pre-binding
+  Resolves: RHEL-185852
+
 * Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-23
 - CVE-2026-35385: Fix privilege escalation via scp legacy protocol
   when not in preserving file mode

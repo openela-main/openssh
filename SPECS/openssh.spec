@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 9.9p1
-%global openssh_rel 7
+%global openssh_rel 9
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 7
 
@@ -258,6 +258,11 @@ Patch1043: openssh-9.9p1-authorized-keys-principles-option.patch
 # upstream 607bd871ec029e9aa22e632a22547250f3cae223
 # upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
 Patch1044: openssh-9.9p1-proxyjump-username-validity-checks.patch
+# upstream 36480181fa22f98e180b4f9e10203480c0346c78
+Patch1045: openssh-9.9p1-scp-remote-glob.patch
+# upstream e8bdfb151a356d0171fea4194dd205fbb252be23
+Patch1046: openssh-9.9p1-cve-2026-60002.patch
+
 
 License: BSD
 Requires: /sbin/nologin
@@ -478,6 +483,8 @@ popd
 %patch1042 -p1 -b .ecdsa-incomplete-application
 %patch1043 -p1 -b .authorized-keys-principles-option
 %patch1044 -p1 -b .proxyjump-username-validity-checks
+%patch1045 -p1 -b .scp-remote-glob
+%patch1046 -p1 -b .cve-2026-60002
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -766,6 +773,25 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Tue Jul 14 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-9
+- CVE-2026-59996: Fix remote glob result of ".." causing files to be placed
+  in unintended parent directories when scp performs remote-to-remote copy
+  via the local host
+  Resolves: RHEL-193178
+- CVE-2026-60002: Fix use-after-free in cached hostkey during key re-exchange
+  Resolves: RHEL-193024
+
+* Tue Jun 30 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-8
+- CVE-2026-55653: Fix double free in openssh DH-GEX client path during
+  FIPS known-group validation that leads to client-side denial of service
+  Resolves: RHEL-186439
+- CVE-2026-55654: Fix heap out-of-bounds read during GSSAPI indicator
+  cleanup due to missing NULL terminator
+  Resolves: RHEL-185836
+- CVE-2026-55655: Fix MITM of X11 forwarding via abstract UNIX socket
+  pre-binding
+  Resolves: RHEL-185854
+
 * Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-7
 - CVE-2026-35385: Fix privilege escalation via scp legacy protocol
   when not in preserving file mode

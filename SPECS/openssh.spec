@@ -47,9 +47,9 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 9.9p1
-%global openssh_rel 9
+%global openssh_rel 11
 %global pam_ssh_agent_ver 0.10.4
-%global pam_ssh_agent_rel 7
+%global pam_ssh_agent_rel 8
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
@@ -262,7 +262,17 @@ Patch1044: openssh-9.9p1-proxyjump-username-validity-checks.patch
 Patch1045: openssh-9.9p1-scp-remote-glob.patch
 # upstream e8bdfb151a356d0171fea4194dd205fbb252be23
 Patch1046: openssh-9.9p1-cve-2026-60002.patch
-
+# upstream 6a57081dc35acf3ee298108d4bc3580489608d5f
+Patch1049: openssh-10.4p1-CVE-2026-59995.patch
+# upstream 8dfe7ed6e2fd988de08df508355a196b956b2753
+# upstream d322f2ccf7da095ce94d1d99cb563246f61487b0
+# combines CVE-2026-59999 and CVE-2026-73283
+# downstream specific fix, drop on rebase
+Patch1050: openssh-10.4p1-CVE-2026-59999.patch
+# upstream 6a57081dc35acf3ee298108d4bc3580489608d5f
+Patch1051: openssh-10.5p1-CVE-2026-73281.patch
+# upstream 9910d5ef53124ce1157d57bc11e222658aa41299
+Patch1052: openssh-10.5p1-CVE-2026-73282.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -485,6 +495,10 @@ popd
 %patch1044 -p1 -b .proxyjump-username-validity-checks
 %patch1045 -p1 -b .scp-remote-glob
 %patch1046 -p1 -b .cve-2026-60002
+%patch1049 -p1 -b .CVE-2026-59995
+%patch1050 -p1 -b .CVE-2026-59999
+%patch1051 -p1 -b .CVE-2026-73281
+%patch1052 -p1 -b .CVE-2026-73282
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -773,6 +787,25 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Fri Aug 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-11
+- CVE-2026-73283: Complete the fix of security bypass due to incorrect
+  handling of forwarding and tunneling options
+  Resolves: RHEL-245416
+- CVE-2026-73281: Fix misinteraction between agent locking and
+  the session-bind@openssh.com extension
+  Resolves: RHEL-245424
+- CVE-2026-73282: Fix information disclosure and data corruption
+  via use-after-free in ssh client
+  Resolves: RHEL-245419
+
+* Wed Aug 12 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-10
+- Fix CVE-2026-59995 OpenSSH: sftp client allows attacker to control downloaded
+  file location
+  Resolves: RHEL-236320
+- Fix CVE-2026-59999 and CVE-2026-73283: Security bypass due to incorrect
+  handling of forwarding and tunneling options
+  Resolves: RHEL-236286
+
 * Tue Jul 14 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-9
 - CVE-2026-59996: Fix remote glob result of ".." causing files to be placed
   in unintended parent directories when scp performs remote-to-remote copy

@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 9.9p1
-%global openssh_rel 11
+%global openssh_rel 12
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 8
 
@@ -273,6 +273,8 @@ Patch1050: openssh-10.4p1-CVE-2026-59999.patch
 Patch1051: openssh-10.5p1-CVE-2026-73281.patch
 # upstream 9910d5ef53124ce1157d57bc11e222658aa41299
 Patch1052: openssh-10.5p1-CVE-2026-73282.patch
+# upstream d43ba60c91cb323ca921049b7d43b1908c318454
+Patch1053: openssh-9.9p1-CVE-2026-60001.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -499,6 +501,7 @@ popd
 %patch1050 -p1 -b .CVE-2026-59999
 %patch1051 -p1 -b .CVE-2026-73281
 %patch1052 -p1 -b .CVE-2026-73282
+%patch1053 -p1 -b .CVE-2026-60001
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -787,6 +790,11 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Mon Sep 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-12
+- CVE-2026-60001: Fix cases in GSSAPI and keyboard-interactive
+  authentication where the minimum per-attempt delay was not being enforced
+  Resolves: RHEL-258461
+
 * Fri Aug 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-11
 - CVE-2026-73283: Complete the fix of security bypass due to incorrect
   handling of forwarding and tunneling options

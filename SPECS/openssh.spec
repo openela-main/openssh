@@ -43,7 +43,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: 25%{?dist}
+Release: 28%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -244,7 +244,19 @@ Patch1040: openssh-9.9p1-proxyjump-username-validity-checks.patch
 Patch1041: openssh-9.9p1-scp-remote-glob.patch
 # upstream e8bdfb151a356d0171fea4194dd205fbb252be23
 Patch1042: openssh-9.9p1-cve-2026-60002.patch
-
+# upstream 6a57081dc35acf3ee298108d4bc3580489608d5f
+Patch1048: openssh-10.4p1-CVE-2026-59995.patch
+# upstream 8dfe7ed6e2fd988de08df508355a196b956b2753
+# upstream d322f2ccf7da095ce94d1d99cb563246f61487b0
+# combines CVE-2026-59999 and CVE-2026-73283
+# downstream specific fix, drop on rebase
+Patch1049: openssh-10.4p1-CVE-2026-59999.patch
+# upstream 6a57081dc35acf3ee298108d4bc3580489608d5f
+Patch1050: openssh-10.5p1-CVE-2026-73281.patch
+# upstream 9910d5ef53124ce1157d57bc11e222658aa41299
+Patch1051: openssh-10.5p1-CVE-2026-73282.patch
+# upstream d43ba60c91cb323ca921049b7d43b1908c318454
+Patch1052: openssh-9.9p1-CVE-2026-60001.patch
 
 License: BSD-3-Clause AND BSD-2-Clause AND ISC AND SSH-OpenSSH AND ssh-keyscan AND sprintf AND LicenseRef-Fedora-Public-Domain AND X11-distribute-modifications-variant
 Requires: /sbin/nologin
@@ -452,6 +464,11 @@ gpgv2 --quiet --keyring %{SOURCE3} %{SOURCE1} %{SOURCE0}
 %patch -P 1040 -p1 -b .proxyjump-username-validity-checks
 %patch -P 1041 -p1 -b .scp-remote-glob
 %patch -P 1042 -p1 -b .cve-2026-60002
+%patch -P 1048 -p1 -b .CVE-2026-59995
+%patch -P 1049 -p1 -b .CVE-2026-59999
+%patch -P 1050 -p1 -b .CVE-2026-73281
+%patch -P 1051 -p1 -b .CVE-2026-73282
+%patch -P 1052 -p1 -b .CVE-2026-60001
 
 %patch -P 100 -p1 -b .coverity
 
@@ -732,6 +749,30 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
+* Mon Sep 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-28
+- CVE-2026-60001: Fix cases in GSSAPI and keyboard-interactive
+  authentication where the minimum per-attempt delay was not being enforced
+  Resolves: RHEL-258463
+
+* Fri Aug 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-27
+- CVE-2026-73283: Complete the fix of security bypass due to incorrect
+  handling of forwarding and tunneling options
+  Resolves: RHEL-245413
+- CVE-2026-73281: Fix misinteraction between agent locking and
+  the session-bind@openssh.com extension
+  Resolves: RHEL-245423
+- CVE-2026-73282: Fix information disclosure and data corruption
+  via use-after-free in ssh client
+  Resolves: RHEL-245418
+
+* Wed Aug 12 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-26
+- Fix CVE-2026-59995 OpenSSH: sftp client allows attacker to control downloaded
+  file location
+  Resolves: RHEL-236314
+- Fix CVE-2026-59999 and CVE-2026-73283: Security bypass due to incorrect
+  handling of forwarding and tunneling options
+  Resolves: RHEL-236288
+
 * Tue Jul 14 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-25
 - CVE-2026-59996: Fix remote glob result of ".." causing files to be placed
   in unintended parent directories when scp performs remote-to-remote copy

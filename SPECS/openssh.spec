@@ -66,9 +66,9 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.0p1
-%global openssh_rel 30
+%global openssh_rel 33
 %global pam_ssh_agent_ver 0.10.3
-%global pam_ssh_agent_rel 7
+%global pam_ssh_agent_rel 8
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
@@ -313,6 +313,12 @@ Patch1028: openssh-8.7p1-authorized-keys-principles-option.patch
 # upstream 607bd871ec029e9aa22e632a22547250f3cae223
 # upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
 Patch1029: openssh-8.0p1-proxyjump-username-validity-checks.patch
+# upstream 1b39f39657d2e58f8ec57341581a39bbf0be645b
+Patch1030: openssh-8.0p1-CVE-2026-59995.patch
+# upstream 8dfe7ed6e2fd988de08df508355a196b956b2753
+Patch1031: openssh-8.0p1-CVE-2026-59999.patch
+# upstream 9910d5ef53124ce1157d57bc11e222658aa41299
+Patch1032: openssh-8.0p1-CVE-2026-73282.patch
 
 License: BSD
 Group: Applications/Internet
@@ -569,6 +575,9 @@ popd
 %patch1027 -p1 -b .ecdsa-incomplete-application
 %patch1028 -p1 -b .authorized-keys-principles-option
 %patch1029 -p1 -b .proxyjump-username-validity-checks
+%patch1030 -p1 -b .cve-2026-59995
+%patch1031 -p1 -b .cve-2026-59999
+%patch1032 -p1 -b .CVE-2026-73282
 
 autoreconf
 pushd pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -854,6 +863,25 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
+* Tue Aug 25 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.0p1-33
+- CVE-2026-73282: Fix information disclosure and data corruption
+  via use-after-free in ssh client
+  Resolves: RHEL-248257
+
+* Thu Aug 20 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 8.0p1-32
+- Improve fix for CVE-2023-38408, avoid invoking constructors on dlopen()
+  Related: RHEL-234763
+
+* Wed Aug 12 2026 RHEL Packaging Agent <redhat-ymir-agent@redhat.com> - 8.0p1-31 + 0.10.3-8
+- CVE-2026-59995: Fix sftp download to server-controlled path when
+  performing download on the commandline
+  Resolves: RHEL-236324
+- CVE-2026-59999: Fix DisableForwarding=yes not overriding
+  PermitTunnel=yes
+  Resolves: RHEL-236280
+- Improve fix for CVE-2023-38408, avoid invoking constructors on dlopen()
+  Resolves: RHEL-234763
+
 * Mon Jun 29 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.0p1-30
 - CVE-2026-55653: Fix double free in openssh DH-GEX client path during
   FIPS known-group validation that leads to client-side denial of service

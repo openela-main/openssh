@@ -66,7 +66,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 8.0p1
-%global openssh_rel 33
+%global openssh_rel 34
 %global pam_ssh_agent_ver 0.10.3
 %global pam_ssh_agent_rel 8
 
@@ -319,6 +319,16 @@ Patch1030: openssh-8.0p1-CVE-2026-59995.patch
 Patch1031: openssh-8.0p1-CVE-2026-59999.patch
 # upstream 9910d5ef53124ce1157d57bc11e222658aa41299
 Patch1032: openssh-8.0p1-CVE-2026-73282.patch
+# upstream 8058c5bdb507591b79ec926221fbe6fcc296d432
+Patch1033: openssh-9.9p1-CVE-2026-59998.patch
+# upstream e9916c44c1324ab9ab022719e4df08a390a83014
+Patch1034: openssh-9.9p1-CVE-2026-59997.patch
+# upstream 5d04ca6af739b82fd30d84d2783ca802ebfa1192
+Patch1035: openssh-8.0p1-CVE-2026-60000.patch
+# upstream d43ba60c91cb323ca921049b7d43b1908c318454
+Patch1036: openssh-8.0p1-CVE-2026-60001.patch
+# downstream specific fix, drop on rebase
+Patch1037: openssh-8.0p1-CVE-2026-73283.patch
 
 License: BSD
 Group: Applications/Internet
@@ -578,6 +588,11 @@ popd
 %patch1030 -p1 -b .cve-2026-59995
 %patch1031 -p1 -b .cve-2026-59999
 %patch1032 -p1 -b .CVE-2026-73282
+%patch1033 -p1 -b .CVE-2026-59998
+%patch1034 -p1 -b .CVE-2026-59997
+%patch1035 -p1 -b .CVE-2026-60000
+%patch1036 -p1 -b .CVE-2026-60001
+%patch1037 -p1 -b .CVE-2026-73283
 
 autoreconf
 pushd pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -863,6 +878,20 @@ getent passwd sshd >/dev/null || \
 %endif
 
 %changelog
+* Thu Oct 01 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.0p1-34
+- CVE-2026-59998: Document caveat regarding GSSAPIStrictAcceptorCheck
+  Resolves: RHEL-272840
+- CVE-2026-59997: Fix internal-sftp server argument parsing limit
+  Resolves: RHEL-272843
+- CVE-2026-60000: Fix DoS via excessive GSSAPI authentication attempts
+  Resolves: RHEL-272837
+- CVE-2026-60001: Fix cases in GSSAPI and keyboard-interactive
+  authentication where the minimum per-attempt delay was not being enforced
+  Resolves: RHEL-272826
+- CVE-2026-73283: Complete the fix of security bypass due to incorrect
+  handling of forwarding and tunneling options
+  Resolves: RHEL-272820
+
 * Tue Aug 25 2026 Zoltan Fridrich <zfridric@redhat.com> - 8.0p1-33
 - CVE-2026-73282: Fix information disclosure and data corruption
   via use-after-free in ssh client

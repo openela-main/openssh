@@ -1,0 +1,11 @@
+diff --color -ruNp a/pam_ssh_agent_auth-pam_ssh_agent_auth-0.10.4/pam_ssh_agent_auth.pod b/pam_ssh_agent_auth-pam_ssh_agent_auth-0.10.4/pam_ssh_agent_auth.pod
+--- a/pam_ssh_agent_auth-pam_ssh_agent_auth-0.10.4/pam_ssh_agent_auth.pod	2019-07-08 18:36:13.000000000 +0200
++++ b/pam_ssh_agent_auth-pam_ssh_agent_auth-0.10.4/pam_ssh_agent_auth.pod	2026-03-17 12:24:44.462364449 +0100
+@@ -18,7 +18,6 @@ This module provides authentication via
+ 
+ =item /etc/sudoers:
+  
+-In older versions of sudo (< 1.8.5) it was necessary to set:
+  Defaults    env_keep += "SSH_AUTH_SOCK"
+ 
+ =back

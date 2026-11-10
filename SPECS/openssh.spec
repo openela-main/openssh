@@ -47,9 +47,9 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 9.9p1
-%global openssh_rel 13
+%global openssh_rel 15
 %global pam_ssh_agent_ver 0.10.4
-%global pam_ssh_agent_rel 8
+%global pam_ssh_agent_rel 10
 
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
@@ -104,6 +104,8 @@ Patch306: pam_ssh_agent_auth-0.10.2-compat.patch
 Patch307: pam_ssh_agent_auth-0.10.2-dereference.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=2070113
 Patch308: pam_ssh_agent_auth-0.10.4-rsasha2.patch
+# fix manual page claiming SSH_AUTH_SOCK not being required by newer sudo
+Patch309: pam_ssh_agent_auth-0.10.4-doc.patch
 
 #https://bugzilla.mindrot.org/show_bug.cgi?id=1641 (WONTFIX)
 Patch400: openssh-7.8p1-role-mls.patch
@@ -245,23 +247,28 @@ Patch1037: openssh-9.9p1-reject-cntrl-chars-in-username.patch
 # upstream 43b3bff47bb029f2299bacb6a36057981b39fdb0
 Patch1038: openssh-9.9p1-reject-null-char-in-url-string.patch
 Patch1039: openssh-9.9p1-compat-mlkem.patch
+# https://github.com/openssh/openssh-portable/pull/649
+Patch1040: openssh-9.9p1-fill-default-options-error.patch
 # upstream 487e8ac146f7d6616f65c125d5edb210519b833a
-Patch1040: openssh-9.9p1-scp-clear-setuid.patch
+Patch1041: openssh-9.9p1-scp-clear-setuid.patch
 # upstream c805b97b67c774e0bf922ffb29dfbcda9d7b5add
-Patch1041: openssh-9.9p1-mux-askpass-check.patch
+Patch1042: openssh-9.9p1-mux-askpass-check.patch
 # upstream fd1c7e131f331942d20f42f31e79912d570081fa
-Patch1042: openssh-9.9p1-ecdsa-incomplete-application.patch
+Patch1043: openssh-9.9p1-ecdsa-incomplete-application.patch
 # upstream fd1c7e131f331942d20f42f31e79912d570081fa
-Patch1043: openssh-9.9p1-authorized-keys-principles-option.patch
+Patch1044: openssh-9.9p1-authorized-keys-principles-option.patch
 # upstream 76685c9b09a66435cd2ad8373246adf1c53976d3
 # upstream 0a0ef4515361143cad21afa072319823854c1cf6
 # upstream 607bd871ec029e9aa22e632a22547250f3cae223
 # upstream 1340d3fa8e4bb122906a82159c4c9b91584d65ce
-Patch1044: openssh-9.9p1-proxyjump-username-validity-checks.patch
+Patch1045: openssh-9.9p1-proxyjump-username-validity-checks.patch
 # upstream 36480181fa22f98e180b4f9e10203480c0346c78
-Patch1045: openssh-9.9p1-scp-remote-glob.patch
+Patch1046: openssh-9.9p1-scp-remote-glob.patch
 # upstream e8bdfb151a356d0171fea4194dd205fbb252be23
-Patch1046: openssh-9.9p1-cve-2026-60002.patch
+Patch1047: openssh-9.9p1-cve-2026-60002.patch
+# upstream eddd1d2daa64a6ab1a915ca88436fa41aede44d4
+# upstream bc328144f149af07139a0f2c1329018cd85b86b7
+Patch1048: openssh-9.9p1-maxstartups-mistracking.patch
 # upstream 6a57081dc35acf3ee298108d4bc3580489608d5f
 Patch1049: openssh-10.4p1-CVE-2026-59995.patch
 # upstream 8dfe7ed6e2fd988de08df508355a196b956b2753
@@ -275,12 +282,7 @@ Patch1051: openssh-10.5p1-CVE-2026-73281.patch
 Patch1052: openssh-10.5p1-CVE-2026-73282.patch
 # upstream d43ba60c91cb323ca921049b7d43b1908c318454
 Patch1053: openssh-9.9p1-CVE-2026-60001.patch
-# upstream 8058c5bdb507591b79ec926221fbe6fcc296d432
-Patch1054: openssh-9.9p1-CVE-2026-59998.patch
-# upstream e9916c44c1324ab9ab022719e4df08a390a83014
-Patch1055: openssh-9.9p1-CVE-2026-59997.patch
-# upstream 5d04ca6af739b82fd30d84d2783ca802ebfa1192
-Patch1056: openssh-9.9p1-CVE-2026-60000.patch
+
 
 License: BSD
 Requires: /sbin/nologin
@@ -416,6 +418,7 @@ pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
 %patch305 -p2 -b .psaa-agent
 %patch307 -p2 -b .psaa-deref
 %patch308 -p2 -b .rsasha2
+%patch309 -p2 -b .psaa-doc
 # Remove duplicate headers and library files
 rm -f $(cat %{SOURCE5})
 popd
@@ -473,9 +476,6 @@ popd
 
 %patch1002 -p1 -b .ssh-manpage
 %patch1006 -p1 -b .negotiate-supported-algs
-
-%patch100 -p1 -b .coverity
-
 %patch1007 -p1 -b .sshrsacheck
 %patch1012 -p1 -b .evp-fips-kex
 %patch1015 -p1 -b .pam-rhost
@@ -496,21 +496,22 @@ popd
 %patch1037 -p1 -b .reject-cntrl-chars-in-username
 %patch1038 -p1 -b .reject-null-char-in-url-string
 %patch1039 -p1 -b .skip-mlkem-when-na
-%patch1040 -p1 -b .scp-clear-setuid
-%patch1041 -p1 -b .mux-askpass-check
-%patch1042 -p1 -b .ecdsa-incomplete-application
-%patch1043 -p1 -b .authorized-keys-principles-option
-%patch1044 -p1 -b .proxyjump-username-validity-checks
-%patch1045 -p1 -b .scp-remote-glob
-%patch1046 -p1 -b .cve-2026-60002
+%patch1040 -p1 -b .fill-default-options-error
+%patch1041 -p1 -b .scp-clear-setuid
+%patch1042 -p1 -b .mux-askpass-check
+%patch1043 -p1 -b .ecdsa-incomplete-application
+%patch1044 -p1 -b .authorized-keys-principles-option
+%patch1045 -p1 -b .proxyjump-username-validity-checks
+%patch1046 -p1 -b .scp-remote-glob
+%patch1047 -p1 -b .cve-2026-60002
+%patch1048 -p1 -b .maxstartups-mistracking
 %patch1049 -p1 -b .CVE-2026-59995
 %patch1050 -p1 -b .CVE-2026-59999
 %patch1051 -p1 -b .CVE-2026-73281
 %patch1052 -p1 -b .CVE-2026-73282
 %patch1053 -p1 -b .CVE-2026-60001
-%patch1054 -p1 -b .CVE-2026-59998
-%patch1055 -p1 -b .CVE-2026-59997
-%patch1056 -p1 -b .CVE-2026-60000
+
+%patch100 -p1 -b .coverity
 
 autoreconf
 pushd pam_ssh_agent_auth-pam_ssh_agent_auth-%{pam_ssh_agent_ver}
@@ -799,80 +800,85 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
-* Wed Oct 07 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-13
-- CVE-2026-59998: Document caveat regarding GSSAPIStrictAcceptorCheck
-  Resolves: RHEL-276221
-- CVE-2026-59997: Fix internal-sftp server argument parsing limit
-  Resolves: RHEL-276234
-- CVE-2026-60000: Fix DoS via excessive GSSAPI authentication attempts
-  Resolves: RHEL-276230
+* Fri Sep 18 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-15
+- bump release
 
-* Mon Sep 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-12
+* Thu Sep 17 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-14
 - CVE-2026-60001: Fix cases in GSSAPI and keyboard-interactive
   authentication where the minimum per-attempt delay was not being enforced
-  Resolves: RHEL-258461
+  Resolves: RHEL-258464
 
-* Fri Aug 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-11
+* Fri Aug 21 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-13
 - CVE-2026-73283: Complete the fix of security bypass due to incorrect
   handling of forwarding and tunneling options
-  Resolves: RHEL-245416
+  Resolves: RHEL-245414
 - CVE-2026-73281: Fix misinteraction between agent locking and
   the session-bind@openssh.com extension
-  Resolves: RHEL-245424
+  Resolves: RHEL-245422
 - CVE-2026-73282: Fix information disclosure and data corruption
   via use-after-free in ssh client
-  Resolves: RHEL-245419
+  Resolves: RHEL-245420
 
-* Wed Aug 12 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-10
+* Wed Aug 12 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-12
 - Fix CVE-2026-59995 OpenSSH: sftp client allows attacker to control downloaded
   file location
-  Resolves: RHEL-236320
+  Resolves: RHEL-236326
 - Fix CVE-2026-59999 and CVE-2026-73283: Security bypass due to incorrect
   handling of forwarding and tunneling options
-  Resolves: RHEL-236286
+  Resolves: RHEL-236284
 
-* Tue Jul 14 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-9
+* Thu Jul 30 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-11
+- Fix mistracking of MaxStartups process exits in some situations
+  Resolves: RHEL-216650
+
+* Tue Jul 14 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-10
 - CVE-2026-59996: Fix remote glob result of ".." causing files to be placed
   in unintended parent directories when scp performs remote-to-remote copy
   via the local host
-  Resolves: RHEL-193178
+  Resolves: RHEL-193176
 - CVE-2026-60002: Fix use-after-free in cached hostkey during key re-exchange
-  Resolves: RHEL-193024
+  Resolves: RHEL-193023
 
-* Tue Jun 30 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-8
+* Fri Jun 26 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-9
 - CVE-2026-55653: Fix double free in openssh DH-GEX client path during
   FIPS known-group validation that leads to client-side denial of service
-  Resolves: RHEL-186439
+  Resolves: RHEL-186440
 - CVE-2026-55654: Fix heap out-of-bounds read during GSSAPI indicator
   cleanup due to missing NULL terminator
-  Resolves: RHEL-185836
+  Resolves: RHEL-185835
 - CVE-2026-55655: Fix MITM of X11 forwarding via abstract UNIX socket
   pre-binding
-  Resolves: RHEL-185854
+  Resolves: RHEL-185850
 
-* Mon Apr 13 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-7
+* Wed Apr 01 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-8
+- Fix static analysis issues
+  Resolves: RHEL-163366
+- Ssh should refuse connection when mlkem kex is specified in FIPS
+  Resolves: RHEL-155161
 - CVE-2026-35385: Fix privilege escalation via scp legacy protocol
   when not in preserving file mode
-  Resolves: RHEL-164753
+  Resolves: RHEL-164754
 - CVE-2026-35388: Add connection multiplexing confirmation for proxy-mode
   multiplexing sessions
-  Resolves: RHEL-166250
+  Resolves: RHEL-166251
 - CVE-2026-35387: Fix incomplete application of PubkeyAcceptedAlgorithms
   and HostbasedAcceptedAlgorithms with regard to ECDSA keys
-  Resolves: RHEL-166234
+  Resolves: RHEL-166235
 - CVE-2026-35414: Fix mishandling of authorized_keys principals option
-  Resolves: RHEL-166202
+  Resolves: RHEL-166203
 - CVE-2026-35386: Add validation rules to usernames and hostnames
   set for ProxyJump/-J on the commandline
-  Resolves: RHEL-166218
+  Resolves: RHEL-166219
 
-* Thu Mar 26 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-6
+* Thu Mar 26 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-7 + 0.10.4-9
 - Version bump
 
-* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-5
+* Mon Mar 16 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-5 + 0.10.4-8
 - CVE-2026-3497: Fix information disclosure or denial of service due
   to uninitialized variables in gssapi-keyex
-  Resolves: RHEL-155824
+  Resolves: RHEL-155825
+- Fix incorrect claim about SSH_AUTH_SOCK in pam_ssh_agent_auth manual page
+  Resolves: RHEL-122302
 
 * Wed Feb 25 2026 Dmitry Belyavskiy <dbelyavs@redhat.com> - 9.9p1-4
 - Provide a way to skip unsupported ML-KEM hybrid algorithms in FIPS mode

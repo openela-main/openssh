@@ -170,7 +170,7 @@ diff --color -ruNp a/gss-serv-krb5.c b/gss-serv-krb5.c
  
  #include "ssh-gss.h"
  
-@@ -87,6 +88,33 @@ ssh_gssapi_krb5_init(void)
+@@ -87,6 +88,42 @@ ssh_gssapi_krb5_init(void)
  	return 1;
  }
  
@@ -178,6 +178,10 @@ diff --color -ruNp a/gss-serv-krb5.c b/gss-serv-krb5.c
 + * one of indicators in the list of allowed/denied rules.
 + * In case of the match, apply the decision from the rule.
 + * In case of no indicator from the ticket matching the rule, deny
++ *
++ * Returns -1 on any negative match
++ * Returns 1 on positive match and no negative matches
++ * Returns 0 when no matches occurred
 + */
 +
 +static int
@@ -187,18 +191,23 @@ diff --color -ruNp a/gss-serv-krb5.c b/gss-serv-krb5.c
 +	u_int i;
 +	*matched = -1;
 +
-+	/* Check indicators */
 +	for (i = 0; client->indicators[i] != NULL; i++) {
 +		ret = match_pattern_list(client->indicators[i],
 +					 options.gss_indicators, 1);
-+		/* negative or positive match */
-+		if (ret != 0) {
++
++		/* record first positive match */
++		if (ret == 1 && *matched == -1)
 +			*matched = i;
-+			return ret;
++
++		/* deny rule matched, return negative */
++		if (ret == -1) {
++			*matched = i;
++			return -1;
 +		}
 +	}
-+	/* No rule matched */
-+	return 0;
++	/* if there was a match, it was positive,
++	 * otherwise no match */
++	return *matched != -1;
 +}
 +
  /* Check if this user is OK to login. This only works with krb5 - other

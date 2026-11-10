@@ -2093,7 +2093,7 @@ diff -up openssh-8.6p1/sshd-session.c.audit openssh-8.6p1/sshd-session.c
 +#endif /* WITH_OPENSSL */
 +      case KEY_ED25519_CERT:
 +      case KEY_ED25519:
-+              return (k->ed25519_pk != NULL);
++              return (k->ed25519_sk != NULL);
 +      default:
 +              /* fatal("key_is_private: bad key type %d", k->type); */
 +              return 0;

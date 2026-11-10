@@ -159,6 +159,46 @@ diff -up openssh-8.7p1/openbsd-compat/bsd-pselect.c.coverity openssh-8.7p1/openb
 diff -up openssh-8.5p1/readconf.c.coverity openssh-8.5p1/readconf.c
 --- openssh-8.5p1/readconf.c.coverity	2021-03-24 12:03:33.778968131 +0100
 +++ openssh-8.5p1/readconf.c	2021-03-24 12:03:33.785968180 +0100
+@@ -749,12 +749,12 @@ match_cfg_line(Options *options, const c
+ 	debug2("checking match for '%s' host %s originally %s",
+ 	    full_line, host, original_host);
+ 	while ((attrib = argv_next(acp, avp)) != NULL) {
+-		attrib = oattrib = xstrdup(attrib);
+ 		/* Terminate on comment */
+ 		if (*attrib == '#') {
+ 			argv_consume(acp);
+ 			break;
+ 		}
++		attrib = oattrib = xstrdup(attrib);
+ 		arg = criteria = NULL;
+ 		this_result = 1;
+ 		if ((negate = (attrib[0] == '!')))
+@@ -793,7 +793,7 @@ match_cfg_line(Options *options, const c
+ 			debug3("%.200s line %d: %smatched '%s'",
+ 			    filename, linenum,
+ 			    this_result ? "" : "not ", oattrib);
+-			continue;
++			goto next;
+ 		}
+ 
+ 		/* Keep this list in sync with below */
+@@ -863,7 +863,7 @@ match_cfg_line(Options *options, const c
+ 				debug3("%.200s line %d: skipped exec "
+ 				    "\"%.100s\"", filename, linenum, cmd);
+ 				free(cmd);
+-				continue;
++				goto next;
+ 			}
+ 			r = execute_in_shell(cmd);
+ 			if (r == -1) {
+@@ -887,6 +887,7 @@ match_cfg_line(Options *options, const c
+ 		    criteria == NULL ? "" : " \"",
+ 		    criteria == NULL ? "" : criteria,
+ 		    criteria == NULL ? "" : "\"");
++next:
+ 		free(criteria);
+ 		free(oattrib);
+ 		oattrib = attrib = NULL;
 @@ -1847,6 +1847,7 @@ parse_pubkey_algos:
  			} else if (r != 0) {
  				error("%.200s line %d: glob failed for %s.",
@@ -170,6 +210,108 @@ diff -up openssh-8.5p1/readconf.c.coverity openssh-8.5p1/readconf.c
 diff -up openssh-7.4p1/servconf.c.coverity openssh-7.4p1/servconf.c
 --- openssh-7.4p1/servconf.c.coverity	2016-12-23 16:40:26.896788690 +0100
 +++ openssh-7.4p1/servconf.c	2016-12-23 16:40:26.901788691 +0100
+@@ -1120,12 +1120,12 @@ match_cfg_line(const char *full_line, in
+ 	}
+ 
+ 	while ((oattrib = argv_next(acp, avp)) != NULL) {
+-		attrib = xstrdup(oattrib);
+ 		/* Terminate on comment */
+-		if (*attrib == '#') {
++		if (*oattrib == '#') {
+ 			argv_consume(acp); /* mark all arguments consumed */
+ 			break;
+ 		}
++		attrib = xstrdup(oattrib);
+ 		arg = NULL;
+ 		attributes++;
+ 		/* Criterion "all" has no argument and must appear alone */
+@@ -1147,13 +1147,13 @@ match_cfg_line(const char *full_line, in
+ 		if (strcasecmp(attrib, "invalid-user") == 0) {
+ 			if (ci == NULL) {
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->user_invalid == 0)
+ 				result = 0;
+ 			else
+ 				debug("matched invalid-user at line %d", line);
+-			continue;
++			goto next;
+ 		}
+ 
+ 		/* Keep this list in sync with below */
+@@ -1179,7 +1179,7 @@ match_cfg_line(const char *full_line, in
+ 		if (strcasecmp(attrib, "user") == 0) {
+ 			if (ci == NULL || (ci->test && ci->user == NULL)) {
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->user == NULL)
+ 				match_test_missing_fatal("User", "user");
+@@ -1191,7 +1191,7 @@ match_cfg_line(const char *full_line, in
+ 		} else if (strcasecmp(attrib, "group") == 0) {
+ 			if (ci == NULL || (ci->test && ci->user == NULL)) {
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->user == NULL)
+ 				match_test_missing_fatal("Group", "user");
+@@ -1205,7 +1205,7 @@ match_cfg_line(const char *full_line, in
+ 		} else if (strcasecmp(attrib, "host") == 0) {
+ 			if (ci == NULL || (ci->test && ci->host == NULL)) {
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->host == NULL)
+ 				match_test_missing_fatal("Host", "host");
+@@ -1220,7 +1220,7 @@ match_cfg_line(const char *full_line, in
+ 					fatal("Invalid Match address argument "
+ 					    "'%s' at line %d", arg, line);
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->address == NULL)
+ 				match_test_missing_fatal("Address", "addr");
+@@ -1244,7 +1244,7 @@ match_cfg_line(const char *full_line, in
+ 					    "argument '%s' at line %d", arg,
+ 					    line);
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->laddress == NULL)
+ 				match_test_missing_fatal("LocalAddress",
+@@ -1272,7 +1272,7 @@ match_cfg_line(const char *full_line, in
+ 			}
+ 			if (ci == NULL || (ci->test && ci->lport == -1)) {
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->lport == 0)
+ 				match_test_missing_fatal("LocalPort", "lport");
+@@ -1286,7 +1286,7 @@ match_cfg_line(const char *full_line, in
+ 		} else if (strcasecmp(attrib, "rdomain") == 0) {
+ 			if (ci == NULL || (ci->test && ci->rdomain == NULL)) {
+ 				result = 0;
+-				continue;
++				goto next;
+ 			}
+ 			if (ci->rdomain == NULL)
+ 				match_test_missing_fatal("RDomain", "rdomain");
+@@ -1300,6 +1300,7 @@ match_cfg_line(const char *full_line, in
+ 			result = -1;
+ 			goto out;
+ 		}
++next:
+ 		free(attrib);
+ 		attrib = NULL;
+ 	}
 @@ -1638,8 +1638,9 @@ process_server_config_line(ServerOptions
  		if (*activep && *charptr == NULL) {
  			*charptr = tilde_expand_filename(arg, getuid());
@@ -246,3 +388,22 @@ diff -up openssh-8.5p1/ssh-keygen.c.coverity openssh-8.5p1/ssh-keygen.c
  		} else {
  			if (strncasecmp(cp, "key:", 4) == 0) {
  				cp += 4;
+diff --color -ruNp a/sshd.c b/sshd.c
+--- a/sshd.c	2026-04-01 14:29:14.186736233 +0200
++++ b/sshd.c	2026-04-01 14:36:59.136881819 +0200
+@@ -1079,6 +1079,7 @@ server_accept_loop(int *sock_in, int *so
+ 				send_rexec_state(config_s[0], cfg);
+ 				close(config_s[0]);
+ 				free(pfd);
++				free(startup_pollfd);
+ 				return;
+ 			}
+ 
+@@ -1111,6 +1112,7 @@ server_accept_loop(int *sock_in, int *so
+ 				    log_stderr);
+ 				close(config_s[0]);
+ 				free(pfd);
++				free(startup_pollfd);
+ 				return;
+ 			}
+ 

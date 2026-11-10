@@ -676,7 +676,7 @@ index 670049dcd..463d18771 100644
 +	/* generate ECDH key pair, store server pubkey after ciphertext */
 +	server_key = nist_pkey_keygen(server_key_len);
 +
-+	if ((r = get_uncompressed_ec_pubkey(server_key, server_pub, server_key_len) != 0) ||
++	if ((server_key == NULL) || (r = get_uncompressed_ec_pubkey(server_key, server_pub, server_key_len) != 0) ||
 +	    (r = sshbuf_put(buf, secret, sizeof(secret))) != 0 ||
 +	    (r = sshbuf_put(server_blob, enc_out, enc_out_len) != 0)||
 +	    (r = sshbuf_put(server_blob, server_pub, server_key_len)) != 0)

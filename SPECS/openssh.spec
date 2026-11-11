@@ -43,7 +43,7 @@
 Summary: An open source implementation of SSH protocol version 2
 Name: openssh
 Version: %{openssh_ver}
-Release: 32%{?dist}
+Release: 33%{?dist}
 URL: http://www.openssh.com/portable.html
 Source0: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz
 Source1: ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-%{version}.tar.gz.asc
@@ -272,6 +272,12 @@ Patch1050: openssh-10.5p1-CVE-2026-73281.patch
 Patch1051: openssh-10.5p1-CVE-2026-73282.patch
 # upstream d43ba60c91cb323ca921049b7d43b1908c318454
 Patch1052: openssh-9.9p1-CVE-2026-60001.patch
+# upstream 8058c5bdb507591b79ec926221fbe6fcc296d432
+Patch1053: openssh-9.9p1-CVE-2026-59998.patch
+# upstream e9916c44c1324ab9ab022719e4df08a390a83014
+Patch1054: openssh-9.9p1-CVE-2026-59997.patch
+# upstream 5d04ca6af739b82fd30d84d2783ca802ebfa1192
+Patch1055: openssh-9.9p1-CVE-2026-60000.patch
 
 License: BSD-3-Clause AND BSD-2-Clause AND ISC AND SSH-OpenSSH AND ssh-keyscan AND snprintf AND LicenseRef-Fedora-Public-Domain AND X11-distribute-modifications-variant
 Requires: /sbin/nologin
@@ -488,6 +494,9 @@ gpgv2 --quiet --keyring %{SOURCE3} %{SOURCE1} %{SOURCE0}
 %patch -P 1050 -p1 -b .CVE-2026-73281
 %patch -P 1051 -p1 -b .CVE-2026-73282
 %patch -P 1052 -p1 -b .CVE-2026-60001
+%patch -P 1053 -p1 -b .CVE-2026-59998
+%patch -P 1054 -p1 -b .CVE-2026-59997
+%patch -P 1055 -p1 -b .CVE-2026-60000
 
 %patch -P 100 -p1 -b .coverity
 
@@ -768,6 +777,14 @@ test -f %{sysconfig_anaconda} && \
 %attr(0755,root,root) %{_libdir}/sshtest/sk-dummy.so
 
 %changelog
+* Thu Oct 01 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-33
+- CVE-2026-59998: Document caveat regarding GSSAPIStrictAcceptorCheck
+  Resolves: RHEL-276921
+- CVE-2026-59997: Fix internal-sftp server argument parsing limit
+  Resolves: RHEL-276929
+- CVE-2026-60000: Fix DoS via excessive GSSAPI authentication attempts
+  Resolves: RHEL-276922
+
 * Fri Sep 18 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-32
 - Bump release
 

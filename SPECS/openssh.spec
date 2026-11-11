@@ -47,7 +47,7 @@
 
 # Do not forget to bump pam_ssh_agent_auth release if you rewind the main package release to 1
 %global openssh_ver 9.9p1
-%global openssh_rel 15
+%global openssh_rel 16
 %global pam_ssh_agent_ver 0.10.4
 %global pam_ssh_agent_rel 10
 
@@ -282,7 +282,12 @@ Patch1051: openssh-10.5p1-CVE-2026-73281.patch
 Patch1052: openssh-10.5p1-CVE-2026-73282.patch
 # upstream d43ba60c91cb323ca921049b7d43b1908c318454
 Patch1053: openssh-9.9p1-CVE-2026-60001.patch
-
+# upstream 8058c5bdb507591b79ec926221fbe6fcc296d432
+Patch1054: openssh-9.9p1-CVE-2026-59998.patch
+# upstream e9916c44c1324ab9ab022719e4df08a390a83014
+Patch1055: openssh-9.9p1-CVE-2026-59997.patch
+# upstream 5d04ca6af739b82fd30d84d2783ca802ebfa1192
+Patch1056: openssh-9.9p1-CVE-2026-60000.patch
 
 License: BSD
 Requires: /sbin/nologin
@@ -510,6 +515,9 @@ popd
 %patch1051 -p1 -b .CVE-2026-73281
 %patch1052 -p1 -b .CVE-2026-73282
 %patch1053 -p1 -b .CVE-2026-60001
+%patch1054 -p1 -b .CVE-2026-59998
+%patch1055 -p1 -b .CVE-2026-59997
+%patch1056 -p1 -b .CVE-2026-60000
 
 %patch100 -p1 -b .coverity
 
@@ -800,6 +808,14 @@ test -f %{sysconfig_anaconda} && \
 %endif
 
 %changelog
+* Thu Oct 01 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-16
+- CVE-2026-59998: Document caveat regarding GSSAPIStrictAcceptorCheck
+  Resolves: RHEL-276923
+- CVE-2026-59997: Fix internal-sftp server argument parsing limit
+  Resolves: RHEL-276930
+- CVE-2026-60000: Fix DoS via excessive GSSAPI authentication attempts
+  Resolves: RHEL-276924
+
 * Fri Sep 18 2026 Zoltan Fridrich <zfridric@redhat.com> - 9.9p1-15
 - bump release
 
